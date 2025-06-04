@@ -16,11 +16,11 @@ from oauthlib.oauth2.rfc6749.errors import InvalidGrantError
 from sqlalchemy.exc import NoResultFound
 from werkzeug.local import LocalProxy
 
-from app import app, db
-from models import OAuth, User
+from app import app
+from models import db, OAuth, User
 
 login_manager = LoginManager(app)
-login_manager.login_view = 'replit_auth.login'
+login_manager.login_view = 'football_auth.login'
 login_manager.login_message = 'Please log in to access this page.'
 
 
@@ -64,7 +64,7 @@ class UserSessionStorage(BaseStorage):
         db.session.commit()
 
 
-def make_replit_blueprint():
+def make_football_blueprint():
     try:
         repl_id = os.environ['REPL_ID']
     except KeyError:
@@ -72,8 +72,8 @@ def make_replit_blueprint():
 
     issuer_url = os.environ.get('ISSUER_URL', "https://replit.com/oidc")
 
-    replit_bp = OAuth2ConsumerBlueprint(
-        "replit_auth",
+    football_bp = OAuth2ConsumerBlueprint(
+        "football_auth",
         __name__,
         client_id=repl_id,
         client_secret=None,
@@ -97,17 +97,17 @@ def make_replit_blueprint():
         storage=UserSessionStorage(),
     )
 
-    @replit_bp.before_app_request
+    @football_bp.before_app_request
     def set_applocal_session():
         if '_browser_session_key' not in session:
             session['_browser_session_key'] = uuid.uuid4().hex
         session.modified = True
         g.browser_session_key = session['_browser_session_key']
-        g.flask_dance_replit = replit_bp.session
+        g.flask_dance_football = football_bp.session
 
-    @replit_bp.route("/logout")
+    @football_bp.route("/logout")
     def logout():
-        del replit_bp.token
+        del football_bp.token
         logout_user()
 
         end_session_endpoint = issuer_url + "/session/end"
@@ -119,11 +119,11 @@ def make_replit_blueprint():
 
         return redirect(logout_url)
 
-    @replit_bp.route("/error")
+    @football_bp.route("/error")
     def error():
         return render_template("auth_error.html"), 403
 
-    return replit_bp
+    return football_bp
 
 
 def save_user(user_claims):
@@ -153,7 +153,7 @@ def logged_in(blueprint, token):
 
 @oauth_error.connect
 def handle_error(blueprint, error, error_description=None, error_uri=None):
-    return redirect(url_for('replit_auth.error'))
+    return redirect(url_for('football_auth.error'))
 
 
 def require_login(f):
@@ -161,22 +161,27 @@ def require_login(f):
     def decorated_function(*args, **kwargs):
         if not current_user.is_authenticated:
             session["next_url"] = get_next_navigation_url(request)
-            return redirect(url_for('replit_auth.login'))
+            return redirect(url_for('football_auth.login'))
 
-        try:
-            expires_in = replit.token.get('expires_in', 0)
-            if expires_in < 0:
-                issuer_url = os.environ.get('ISSUER_URL', "https://replit.com/oidc")
-                refresh_token_url = issuer_url + "/token"
-                try:
-                    token = replit.refresh_token(token_url=refresh_token_url,
-                                                 client_id=os.environ['REPL_ID'])
-                except InvalidGrantError:
-                    session["next_url"] = get_next_navigation_url(request)
-                    return redirect(url_for('replit_auth.login'))
-                replit.token_updater(token)
-        except:
-            pass  # Continue if token refresh fails
+        if hasattr(football, 'token') and football.token:
+            try:
+                expires_in = football.token.get('expires_in', 0)
+                if expires_in < 0:
+                    issuer_url = os.environ.get('ISSUER_URL', "https://replit.com/oidc")
+                    refresh_token_url = issuer_url + "/token"
+                    try:
+                        token = football.refresh_token(
+                            token_url=refresh_token_url,
+                            client_id=os.environ.get('REPL_ID', '')
+                        )
+                        if token:
+                            football.token_updater(token)
+                    except (InvalidGrantError, AttributeError):
+                        session["next_url"] = get_next_navigation_url(request)
+                        return redirect(url_for('football_auth.login'))
+            except Exception as e:
+                print(f"Token refresh error: {e}")
+                pass  # Continue if token refresh fails
 
         return f(*args, **kwargs)
 
@@ -192,4 +197,4 @@ def get_next_navigation_url(request):
     return request.referrer or request.url
 
 
-replit = LocalProxy(lambda: g.flask_dance_replit)
+football = LocalProxy(lambda: g.flask_dance_football)

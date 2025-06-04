@@ -1,5 +1,5 @@
 from app import db
-from models import Team, Player, Match, InjuryReport, Prediction
+from models import Team, Match, Prediction
 from datetime import datetime, timedelta
 import random
 
@@ -43,61 +43,21 @@ def initialize_sample_data():
     # Create teams
     teams = []
     for team_data in teams_data:
-        team = Team(**team_data)
+        team = Team(
+            name=team_data['name'],
+            short_name=team_data['name'][:3].upper(),
+            country=team_data['country'],
+            founded=team_data['founded'],
+            stadium=team_data['stadium']
+        )
         db.session.add(team)
         teams.append(team)
     
     db.session.commit()
     print(f"Created {len(teams)} teams")
     
-    # Create players for each team
-    positions = ['GK', 'CB', 'CB', 'LB', 'RB', 'CDM', 'CM', 'CAM', 'LW', 'RW', 'ST']
-    turkish_names = [
-        "Ahmet Yılmaz", "Mehmet Kaya", "Mustafa Demir", "Ali Çelik", "Hasan Şahin",
-        "Hüseyin Yıldız", "İbrahim Özkan", "Osman Arslan", "Emre Doğan", "Burak Koç",
-        "Serkan Aydın", "Tolga Polat", "Kemal Erdoğan", "Fatih Çakır", "Onur Güneş",
-        "Selçuk Bulut", "Gökhan Aslan", "Volkan Kurt", "Eren Özdemir", "Can Aktaş"
-    ]
-    
-    for team in teams:
-        for i, position in enumerate(positions):
-            player = Player(
-                name=f"{random.choice(turkish_names)} {i+1}",
-                position=position,
-                age=random.randint(18, 35),
-                team_id=team.id,
-                skill_rating=random.randint(50, 95),
-                games_played=random.randint(0, 30),
-                goals_scored=random.randint(0, 15) if position in ['ST', 'CAM', 'LW', 'RW'] else random.randint(0, 5),
-                assists=random.randint(0, 10) if position not in ['GK', 'CB'] else random.randint(0, 2)
-            )
-            db.session.add(player)
-    
-    db.session.commit()
-    print(f"Created {Player.query.count()} players")
-    
-    # Create some injury reports
-    players = Player.query.all()
-    injury_types = ["Hamstring", "Ankle", "Knee", "Muscle", "Groin", "Back", "Shoulder"]
-    
-    for _ in range(15):  # Create 15 random injuries
-        player = random.choice(players)
-        injury = InjuryReport(
-            player_id=player.id,
-            injury_type=random.choice(injury_types),
-            severity=random.randint(1, 8),
-            injury_date=datetime.utcnow() - timedelta(days=random.randint(1, 30)),
-            expected_return_date=datetime.utcnow() + timedelta(days=random.randint(1, 60)),
-            status='injured'
-        )
-        db.session.add(injury)
-        
-        # Update player injury status
-        player.injury_status = True
-        player.injury_severity = injury.severity
-    
-    db.session.commit()
-    print(f"Created {InjuryReport.query.count()} injury reports")
+    print("Skipping player and injury report creation as models are not available")
+    players = []
     
     # Create historical matches
     current_date = datetime.utcnow()

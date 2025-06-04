@@ -6,12 +6,12 @@ from ai_models import StatisticalPredictor, LSTMPredictor, CNNPredictor, Bayesia
 from database_utils import initialize_sample_data, get_team_recent_form, get_head_to_head_stats
 from football_api import FootballDataAPI
 from leagues_manager import LeaguesManager
-from replit_auth import make_replit_blueprint, require_login
+from football_auth import make_football_blueprint, require_login
 import json
 from datetime import datetime, timedelta
 
 # Register auth blueprint
-app.register_blueprint(make_replit_blueprint(), url_prefix="/auth")
+app.register_blueprint(make_football_blueprint(), url_prefix="/auth")
 
 # Make session permanent
 @app.before_request

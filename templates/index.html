@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Futbol Analiz Uygulaması</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/">Futbol Analiz</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/">Ana Sayfa</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">Maçlar</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">Tahminler</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-md-8 offset-md-2">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="text-center">Futbol Maç Analizi</h3>
+                    </div>
+                    <div class="card-body">
+                        <div id="teams-container">
+                            <!-- Takımlar buraya yüklenecek -->
+                            <p class="text-center">Yükleniyor...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Sayfa yüklendiğinde çalışacak kodlar
+        document.addEventListener('DOMContentLoaded', function() {
+            fetch('/teams')
+                .then(response => response.json())
+                .then(data => {
+                    const container = document.getElementById('teams-container');
+                    if (data.teams && data.teams.length > 0) {
+                        let html = '<div class="list-group">';
+                        data.teams.forEach(team => {
+                            html += `<a href="#" class="list-group-item list-group-item-action">${team}</a>`;
+                        });
+                        html += '</div>';
+                        container.innerHTML = html;
+                    } else {
+                        container.innerHTML = '<p class="text-center">Henüz takım bulunmamaktadır.</p>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Hata:', error);
+                    document.getElementById('teams-container').innerHTML = 
+                        '<p class="text-danger text-center">Bir hata oluştu. Lütfen daha sonra tekrar deneyiniz.</p>';
+                });
+        });
+    </script>
+</body>
+</html>
