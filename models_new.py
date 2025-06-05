@@ -10,6 +10,9 @@ db = SQLAlchemy()
 def calculate_win_percentage(wins, total):
     return round((wins / total) * 100, 2) if total > 0 else 0.0
 
+# Move all model definitions below this line
+# This prevents circular imports
+
 class Country(db.Model):
     """Ülke modeli"""
     __tablename__ = 'countries'
@@ -79,6 +82,7 @@ class Team(db.Model):
     def __repr__(self):
         return f'<Team {self.name}>'
 
+
 class Match(db.Model):
     """Maç modeli"""
     __tablename__ = 'matches'
@@ -92,6 +96,7 @@ class Match(db.Model):
     season = db.Column(db.String(20), index=True)  # Örn: '2023/2024'
     matchday = db.Column(db.Integer)  # Hafta numarası
     league_id = db.Column(db.Integer, db.ForeignKey('leagues.id'), nullable=False)
+    status = db.Column(db.String(20), default='Scheduled')  # Scheduled, Live, HT, Finished, Postponed, Cancelled
     
     # Maç sonuçları
     home_goals = db.Column(db.Integer)
@@ -117,9 +122,6 @@ class Match(db.Model):
     home_offsides = db.Column(db.Integer)  # Ofsayt
     away_offsides = db.Column(db.Integer)
     
-    # Durum
-    status = db.Column(db.String(20), default='Scheduled')  # Scheduled, Live, HT, Finished
-    
     # Zaman damgaları
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -128,65 +130,10 @@ class Match(db.Model):
     home_team = db.relationship('Team', foreign_keys=[home_team_id], back_populates='home_matches')
     away_team = db.relationship('Team', foreign_keys=[away_team_id], back_populates='away_matches')
     league = db.relationship('League', back_populates='matches')
-    predictions = db.relationship('Prediction', back_populates='match', lazy='dynamic')
-    
-    # Hesaplanan özellikler
-    @hybrid_property
-    def total_goals(self):
-        if self.home_goals is not None and self.away_goals is not None:
-            return self.home_goals + self.away_goals
-        return None
-    
-    @hybrid_property
-    def result(self):
-        if self.home_goals is None or self.away_goals is None:
-            return None
-        if self.home_goals > self.away_goals:
-            return 'H'  # Home win
-        elif self.home_goals < self.away_goals:
-            return 'A'  # Away win
-        return 'D'  # Draw
-    
-    @hybrid_property
-    def half_time_result(self):
-        if self.home_ht_goals is None or self.away_ht_goals is None:
-            return None
-        if self.home_ht_goals > self.away_ht_goals:
-            return 'H'  # Home win at HT
-        elif self.home_ht_goals < self.away_ht_goals:
-            return 'A'  # Away win at HT
-        return 'D'  # Draw at HT
-    
-    def to_dict(self):
-        """Maç verilerini sözlük olarak döndürür"""
-        return {
-            'id': self.id,
-            'home_team': self.home_team.name,
-            'away_team': self.away_team.name,
-            'match_date': self.match_date.isoformat(),
-            'competition': self.competition,
-            'season': self.season,
-            'home_goals': self.home_goals,
-            'away_goals': self.away_goals,
-            'home_ht_goals': self.home_ht_goals,
-            'away_ht_goals': self.away_ht_goals,
-            'status': self.status,
-            'stats': {
-                'possession': {'home': self.home_possession, 'away': self.away_possession},
-                'shots': {'home': self.home_shots, 'away': self.away_shots},
-                'shots_on_target': {'home': self.home_shots_on_target, 'away': self.away_shots_on_target},
-                'corners': {'home': self.home_corners, 'away': self.away_corners},
-                'fouls': {'home': self.home_fouls, 'away': self.away_fouls},
-                'cards': {
-                    'yellows': {'home': self.home_yellows, 'away': self.away_yellows},
-                    'reds': {'home': self.home_reds, 'away': self.away_reds}
-                },
-                'offsides': {'home': self.home_offsides, 'away': self.away_offsides}
-            }
-        }
     
     def __repr__(self):
-        return f'<Match {self.home_team.name} {self.home_goals or "?"} - {self.away_goals or "?"} {self.away_team.name} ({self.match_date.strftime("%d.%m.%Y")})>'
+        return f'<Match {self.home_team.name} vs {self.away_team.name} ({self.match_date})>'
+
 
 class Prediction(db.Model):
     """Tahmin modeli"""
@@ -195,34 +142,34 @@ class Prediction(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     match_id = db.Column(db.Integer, db.ForeignKey('matches.id'), nullable=False, index=True)
     
-    # Temel tahminler
+    # Tahmin sonuçları
     home_goals = db.Column(db.Float, nullable=False)
     away_goals = db.Column(db.Float, nullable=False)
-    home_win = db.Column(db.Float, nullable=False)  # Ev sahibi galibiyet olasılığı
-    draw = db.Column(db.Float, nullable=False)       # Beraberlik olasılığı
-    away_win = db.Column(db.Float, nullable=False)   # Deplasman galibiyet olasılığı
+    
+    # Maç sonucu ihtimalleri
+    home_win = db.Column(db.Float, nullable=False)  # Ev sahibi galibiyet ihtimali
+    draw = db.Column(db.Float, nullable=False)      # Beraberlik ihtimali
+    away_win = db.Column(db.Float, nullable=False)  # Deplasman galibiyet ihtimali
     
     # İlk yarı tahminleri
-    home_ht_goals = db.Column(db.Float)  # İlk yarı ev golleri
-    away_ht_goals = db.Column(db.Float)  # İlk yarı deplasman golleri
-    ht_home_win = db.Column(db.Float)    # İlk yarı ev galibiyet
-    ht_draw = db.Column(db.Float)        # İlk yarı beraberlik
-    ht_away_win = db.Column(db.Float)    # İlk yarı deplasman galibiyet
+    home_ht_goals = db.Column(db.Float)
+    away_ht_goals = db.Column(db.Float)
+    ht_home_win = db.Column(db.Float)  # İlk yarı ev galibiyet ihtimali
+    ht_draw = db.Column(db.Float)      # İlk yarı beraberlik ihtimali
+    ht_away_win = db.Column(db.Float)  # İlk yarı deplasman galibiyet ihtimali
     
-    # Skor tahminleri ve olasılıkları
+    # Özel bahisler
     most_likely_score = db.Column(db.String(10))  # En olası skor (örn: '2-1')
-    score_probability = db.Column(db.Float)       # En olası skorun gerçekleşme olasılığı
-    
-    # İstatistiksel özetler
-    over_05 = db.Column(db.Float)  # 0.5 üstü gol olasılığı
-    over_15 = db.Column(db.Float)  # 1.5 üstü gol olasılığı
-    over_25 = db.Column(db.Float)  # 2.5 üstü gol olasılığı
-    btts_yes = db.Column(db.Float)  # İki takımın da gol atma olasılığı
+    score_probability = db.Column(db.Float)      # Bu skorun olasılığı
+    over_05 = db.Column(db.Float)  # 0.5 üstü gol ihtimali
+    over_15 = db.Column(db.Float)  # 1.5 üstü gol ihtimali
+    over_25 = db.Column(db.Float)  # 2.5 üstü gol ihtimali
+    btts_yes = db.Column(db.Float)  # İki takım da gol atar ihtimali
     
     # Model bilgileri
     algorithm = db.Column(db.String(50), nullable=False)  # Kullanılan algoritma
-    model_version = db.Column(db.String(20))             # Model versiyonu
-    confidence = db.Column(db.Float)                      # Genel güven skoru (0-1)
+    model_version = db.Column(db.String(20))  # Model versiyonu
+    confidence = db.Column(db.Float)  # Tahmin güveni
     
     # Zaman damgaları
     created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
@@ -231,71 +178,58 @@ class Prediction(db.Model):
     # İlişkiler
     match = db.relationship('Match', back_populates='predictions')
     
-    # Hesaplanan özellikler
-    @hybrid_property
+    @property
     def total_goals(self):
+        """Toplam gol sayısını döndürür"""
         return self.home_goals + self.away_goals
     
-    @hybrid_property
+    @property
     def predicted_result(self):
-        if self.home_win >= self.away_win and self.home_win >= self.draw:
-            return 'H'  # Home win
-        elif self.away_win >= self.home_win and self.away_win >= self.draw:
-            return 'A'  # Away win
-        return 'D'  # Draw
+        """Tahmin edilen maç sonucunu döndürür"""
+        if self.home_win > self.away_win and self.home_win > self.draw:
+            return '1'
+        elif self.away_win > self.home_win and self.away_win > self.draw:
+            return '2'
+        else:
+            return 'X'
     
     def to_dict(self):
         """Tahmin verilerini sözlük olarak döndürür"""
         return {
             'id': self.id,
             'match_id': self.match_id,
-            'prediction': {
-                'full_time': {
-                    'home_goals': round(self.home_goals, 2),
-                    'away_goals': round(self.away_goals, 2),
-                    'home_win': round(self.home_win * 100, 1),
-                    'draw': round(self.draw * 100, 1),
-                    'away_win': round(self.away_win * 100, 1),
-                    'total_goals': round(self.total_goals, 2)
-                },
-                'half_time': {
-                    'home_goals': round(self.home_ht_goals, 2) if self.home_ht_goals is not None else None,
-                    'away_goals': round(self.away_ht_goals, 2) if self.away_ht_goals is not None else None,
-                    'home_win': round(self.ht_home_win * 100, 1) if self.ht_home_win is not None else None,
-                    'draw': round(self.ht_draw * 100, 1) if self.ht_draw is not None else None,
-                    'away_win': round(self.ht_away_win * 100, 1) if self.ht_away_win is not None else None
-                },
-                'score_prediction': {
-                    'most_likely': self.most_likely_score,
-                    'probability': round(self.score_probability * 100, 1) if self.score_probability else None
-                },
-                'statistics': {
-                    'over_05': round(self.over_05 * 100, 1) if self.over_05 is not None else None,
-                    'over_15': round(self.over_15 * 100, 1) if self.over_15 is not None else None,
-                    'over_25': round(self.over_25 * 100, 1) if self.over_25 is not None else None,
-                    'btts_yes': round(self.btts_yes * 100, 1) if self.btts_yes is not None else None
-                }
-            },
-            'model_info': {
-                'algorithm': self.algorithm,
-                'version': self.model_version,
-                'confidence': round(self.confidence * 100, 1) if self.confidence else None
-            },
-            'created_at': self.created_at.isoformat(),
-            'updated_at': self.updated_at.isoformat()
+            'home_goals': self.home_goals,
+            'away_goals': self.away_goals,
+            'home_win': self.home_win,
+            'draw': self.draw,
+            'away_win': self.away_win,
+            'predicted_result': self.predicted_result,
+            'most_likely_score': self.most_likely_score,
+            'score_probability': self.score_probability,
+            'over_05': self.over_05,
+            'over_15': self.over_15,
+            'over_25': self.over_25,
+            'btts_yes': self.btts_yes,
+            'algorithm': self.algorithm,
+            'model_version': self.model_version,
+            'confidence': self.confidence,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }
     
     def __repr__(self):
-        return f'<Prediction {self.algorithm} v{self.model_version} - {self.home_goals:.1f}-{self.away_goals:.1f} (H:{self.home_win*100:.1f}% D:{self.draw*100:.1f}% A:{self.away_win*100:.1f}%)>'
+        return f'<Prediction {self.match} - {self.predicted_result} ({self.confidence:.0%})>'
+
 
 class TeamStatistics(db.Model):
+    """Takım istatistikleri modeli"""
     __tablename__ = 'team_statistics'
     
     id = db.Column(db.Integer, primary_key=True)
     team_id = db.Column(db.Integer, db.ForeignKey('teams.id'), nullable=False)
-    season = db.Column(db.String(20), nullable=False)
+    season = db.Column(db.String(20), nullable=False)  # Örn: '2023/2024'
     
-    # Overall Statistics
+    # Genel istatistikler
     matches_played = db.Column(db.Integer, default=0)
     wins = db.Column(db.Integer, default=0)
     draws = db.Column(db.Integer, default=0)
@@ -303,7 +237,7 @@ class TeamStatistics(db.Model):
     goals_for = db.Column(db.Integer, default=0)
     goals_against = db.Column(db.Integer, default=0)
     
-    # Home Statistics
+    # İç saha istatistikleri
     home_matches = db.Column(db.Integer, default=0)
     home_wins = db.Column(db.Integer, default=0)
     home_draws = db.Column(db.Integer, default=0)
@@ -311,7 +245,7 @@ class TeamStatistics(db.Model):
     home_goals_for = db.Column(db.Integer, default=0)
     home_goals_against = db.Column(db.Integer, default=0)
     
-    # Away Statistics
+    # Deplasman istatistikleri
     away_matches = db.Column(db.Integer, default=0)
     away_wins = db.Column(db.Integer, default=0)
     away_draws = db.Column(db.Integer, default=0)
@@ -319,13 +253,70 @@ class TeamStatistics(db.Model):
     away_goals_for = db.Column(db.Integer, default=0)
     away_goals_against = db.Column(db.Integer, default=0)
     
-    # Advanced Metrics
+    # İstatistiksel değerler
     average_goals_per_match = db.Column(db.Float, default=0.0)
     average_goals_conceded = db.Column(db.Float, default=0.0)
-    clean_sheets = db.Column(db.Integer, default=0)
+    clean_sheets = db.Column(db.Integer, default=0)  # Sıfır çekilen maç sayısı
     
-    # Relationships
+    # İlişkiler
     team = relationship('Team')
     
+    @property
+    def goal_difference(self):
+        """Averaj değerini döndürür"""
+        return self.goals_for - self.goals_against
+    
+    @property
+    def points(self):
+        """Puan toplamını hesaplar"""
+        return (self.wins * 3) + (self.draws * 1)
+    
+    @property
+    def win_percentage(self):
+        """Galibiyet yüzdesini hesaplar"""
+        return calculate_win_percentage(self.wins, self.matches_played)
+    
+    def update_statistics(self, match, is_home):
+        """İstatistikleri günceller"""
+        if is_home:
+            self.home_matches += 1
+            self.home_goals_for += match.home_goals
+            self.home_goals_against += match.away_goals
+            
+            if match.home_goals > match.away_goals:
+                self.home_wins += 1
+            elif match.home_goals < match.away_goals:
+                self.home_losses += 1
+            else:
+                self.home_draws += 1
+        else:
+            self.away_matches += 1
+            self.away_goals_for += match.away_goals
+            self.away_goals_against += match.home_goals
+            
+            if match.away_goals > match.home_goals:
+                self.away_wins += 1
+            elif match.away_goals < match.home_goals:
+                self.away_losses += 1
+            else:
+                self.away_draws += 1
+        
+        # Genel istatistikleri güncelle
+        self.matches_played = self.home_matches + self.away_matches
+        self.wins = self.home_wins + self.away_wins
+        self.draws = self.home_draws + self.away_draws
+        self.losses = self.home_losses + self.away_losses
+        self.goals_for = self.home_goals_for + self.away_goals_for
+        self.goals_against = self.home_goals_against + self.away_goals_against
+        
+        # Ortalama değerleri güncelle
+        if self.matches_played > 0:
+            self.average_goals_per_match = round(self.goals_for / self.matches_played, 2)
+            self.average_goals_conceded = round(self.goals_against / self.matches_played, 2)
+        
+        # Temiz sayı güncelleme
+        if (is_home and match.away_goals == 0) or (not is_home and match.home_goals == 0):
+            self.clean_sheets += 1
+    
     def __repr__(self):
-        return f'<TeamStatistics {self.team.name} - {self.season}>'
+        return f'<TeamStatistics {self.team.name} - {self.season} - PTS: {self.points}'>'
