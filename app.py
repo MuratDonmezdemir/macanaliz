@@ -66,7 +66,9 @@ def index():
 @app.route('/teams')
 def teams():
     """Get all teams"""
-    # Klasörleri oluştur
+    git add .
+git commit -m "Yapılan değişikliklerin açıklaması"
+git push# Klasörleri oluştur
 mkdir -p app/models app/api app/services
 # Boş dosyaları oluştur
 New-Item -ItemType File -Path "app/__init__.py"
