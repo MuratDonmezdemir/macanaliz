@@ -19,9 +19,10 @@ class Match(BaseModel):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
-    # Relationships are defined in Team model
-    stadium = db.relationship('Stadium', back_populates='matches')
-    season = db.relationship('Season', back_populates='matches')
+    # Relationships
+    # Using backref instead of back_populates to avoid circular imports
+    stadium = db.relationship('Stadium', backref='match_list')
+    season = db.relationship('Season', backref='match_list')
     
     def __repr__(self):
         return f'<Match {self.home_team_id} vs {self.away_team_id}>'

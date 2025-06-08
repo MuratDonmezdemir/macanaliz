@@ -20,9 +20,9 @@ class Player(BaseModel):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
-    # İlişkiler
-    team = db.relationship('Team', back_populates='players')
-    statistics = db.relationship('PlayerStatistics', back_populates='player')
+    # Relationships
+    # Team ilişkisi backref ile tanımlanıyor
+    statistics = db.relationship('PlayerStatistics', backref='player_stats', cascade='all, delete-orphan')
     
     def __repr__(self):
         return f'<Player {self.name}>'
@@ -49,10 +49,7 @@ class PlayerStatistics(BaseModel):
     season_id = db.Column(db.Integer, db.ForeignKey('seasons.id'))
     
     # İlişkiler
-    player = db.relationship('Player', back_populates='statistics')
-    team = db.relationship('Team')
-    match = db.relationship('Match')
-    season = db.relationship('Season')
+    # Player, Team, Match ve Season ilişkileri backref ile tanımlanıyor
     
     # Temel istatistikler
     position = db.Column(db.String(5))  # GK, DEF, MID, FWD

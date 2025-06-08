@@ -1,7 +1,8 @@
-from .. import db
 from datetime import datetime
+from .base import BaseModel
+from app.extensions import db
 
-class Athlete(db.Model):
+class Athlete(BaseModel):
     __tablename__ = 'athletes'
     
     id = db.Column(db.Integer, primary_key=True)
@@ -17,8 +18,6 @@ class Athlete(db.Model):
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # İlişkiler
-    equipment = db.relationship('Equipment', backref='athlete', lazy='dynamic')
-    race_results = db.relationship('RaceResult', backref='athlete', lazy='dynamic')
     
     def __repr__(self):
         return f'<Athlete {self.first_name} {self.last_name}>'

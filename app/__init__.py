@@ -10,7 +10,7 @@ from logging.handlers import RotatingFileHandler
 from .extensions import db, login_manager, cache
 
 def create_app(config_name='default'):
-    """Application factory function."""
+    """Uygulama fabrika fonksiyonu"""
     app = Flask(__name__)
 
     # Temel loglama ayarları
@@ -27,7 +27,7 @@ def create_app(config_name='default'):
     app.logger.info("Uygulama başlatılıyor...")
 
     try:
-        # Load configuration
+        # Konfigürasyonu yükle
         if config_name not in config:
             raise ValueError(f"Geçersiz konfigürasyon adı: {config_name}")
         
@@ -35,9 +35,10 @@ def create_app(config_name='default'):
         config[config_name].init_app(app)
         app.logger.info("Konfigürasyon başarıyla yüklendi")
 
-        # Initialize extensions
+        # Eklentileri başlat
         db.init_app(app)
         login_manager.init_app(app)
+        login_manager.login_view = 'auth.login'
         
         cache_config = {
             'CACHE_TYPE': 'simple',
@@ -46,6 +47,13 @@ def create_app(config_name='default'):
         cache.init_app(app, config=cache_config)
 
         Migrate(app, db)
+
+        # Modelleri başlat
+        with app.app_context():
+            from .models import init_models
+            init_models()
+            app.logger.info("Modeller başarıyla başlatıldı")
+            
     except Exception as e:
         app.logger.error(f"Uygulama başlatılırken hata oluştu: {str(e)}", exc_info=True)
         raise
@@ -68,20 +76,37 @@ def create_app(config_name='default'):
     except Exception as e:
         app.logger.error(f"Log dosyası oluşturulurken hata: {str(e)}")
 
-    # Modelleri import et
-    from .models import base, stadium, league, team, match, user
-
-    # Blueprint'leri import et
-    from .routes.main import bp as main_bp
-    from .routes.auth import bp as auth_bp
-    from .routes.api import api_bp
-
     # Blueprint'leri kaydet
-    app.register_blueprint(main_bp)
-    app.register_blueprint(auth_bp, url_prefix='/auth')
-    app.register_blueprint(api_bp, url_prefix='/api')
+    register_blueprints(app)
+    
+    # Template filtrelerini kaydet
+    register_template_filters(app)
+    
+    # Hata yöneticilerini kaydet
+    register_error_handlers(app)
 
-    # Template filters
+    return app
+
+def register_blueprints(app):
+    """Blueprint'leri kaydeder"""
+    from app.auth.routes import auth_bp
+    from app.main.routes import main_bp
+    from app.api.routes import api_bp
+    
+    # Blueprint'leri kaydet
+    app.register_blueprint(auth_bp, url_prefix='/auth')
+    app.register_blueprint(main_bp)git add .
+git commit -m "Proje yapısı güncellendi ve auth sistemi düzeltildi"
+git push origin main
+    app.register_blueprint(api_bp, url_prefix='/api')
+    
+    # Debug için kayıtlı endpoint'leri göster
+    app.logger.info("Kayıtlı endpoint'ler:")
+    for rule in app.url_map.iter_rules():
+        app.logger.info(f"{rule.endpoint} -> {rule}")
+
+def register_template_filters(app):
+    """Template filtrelerini kaydeder"""
     @app.template_filter('datetimeformat')
     def datetimeformat(value, format='%Y-%m-%d %H:%M'):
         if value is None:
@@ -101,8 +126,9 @@ def create_app(config_name='default'):
             return round(float(value), decimals)
         except (ValueError, TypeError):
             return value
-    
-    # Error handlers
+
+def register_error_handlers(app):
+    """Hata yöneticilerini kaydeder"""
     @app.errorhandler(404)
     def not_found(error):
         return {'error': 'Not found'}, 404
@@ -111,5 +137,3 @@ def create_app(config_name='default'):
     def server_error(error):
         app.logger.error(f'Server Error: {error}', exc_info=True)
         return {'error': 'Internal server error'}, 500
-
-    return app

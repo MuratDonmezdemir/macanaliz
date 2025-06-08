@@ -9,7 +9,7 @@ class Stadium(BaseModel):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     city = db.Column(db.String(50))
-    country = db.String(50)
+    country = db.Column(db.String(50))
     capacity = db.Column(db.Integer)
     address = db.Column(db.String(200))
     opened = db.Column(db.Integer)  # Yıl olarak açılış tarihi
@@ -19,8 +19,7 @@ class Stadium(BaseModel):
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # İlişkiler
-    teams = db.relationship('Team', back_populates='stadium')
-    matches = db.relationship('Match', back_populates='stadium')
+    # Team ve Match ilişkileri backref ile tanımlanıyor
     
     def __repr__(self):
         return f'<Stadium {self.name}>'

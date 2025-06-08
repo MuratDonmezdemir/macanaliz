@@ -15,6 +15,9 @@ class League(BaseModel):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
+    # İlişkiler
+    # Team ilişkisi backref ile tanımlanıyor
+    
     def __repr__(self):
         return f'<League {self.name}>'
 
@@ -32,6 +35,7 @@ class Season(BaseModel):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     league = db.relationship('League', backref=db.backref('seasons', lazy='dynamic'))
+    # Match relationship is defined via backref in Match model
     
     def __repr__(self):
         return f'<Season {self.name}>'

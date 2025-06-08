@@ -1,5 +1,5 @@
 from app import create_app, db
-from app.models import Team, Match, PlayerStatistics, League, Season, Standing
+from app.models import Team, Match, Player, PlayerStatistics, League, Season, Standing
 from datetime import datetime, timedelta
 import random
 
@@ -69,16 +69,35 @@ def init_db():
         
         db.session.commit()
         
-        # Örnek oyuncu istatistikleri ekle
-        players = ["Arda Güler", "Hakan Çalhanoğlu", "Cengiz Ünder", "Cenk Tosun"]
+        # Önce oyuncuları oluştur
+        players = [
+            {"name": "Arda Güler", "position": "MID"},
+            {"name": "Hakan Çalhanoğlu", "position": "MID"},
+            {"name": "Cengiz Ünder", "position": "FWD"},
+            {"name": "Cenk Tosun", "position": "FWD"}
+        ]
         
-        for i, player_name in enumerate(players, 1):
-            stats = PlayerStatistics(
-                player_name=player_name,
+        created_players = []
+        for i, player_data in enumerate(players, 1):
+            player = Player(
+                name=player_data["name"],
                 team_id=(i % 4) + 1,  # 1-4 arası takım ID'leri
+                position=player_data["position"],
+                nationality="Türkiye"
+            )
+            db.session.add(player)
+            created_players.append(player)
+        
+        db.session.commit()
+        
+        # Oyuncu istatistiklerini ekle
+        for i, player in enumerate(created_players, 1):
+            stats = PlayerStatistics(
+                player_id=player.id,
+                team_id=player.team_id,
                 match_id=1 if i % 2 == 0 else 2,
                 season_id=season.id,
-                position='MID' if i % 2 == 0 else 'FWD',
+                position=player.position,
                 minutes_played=random.randint(60, 90),
                 goals=random.randint(0, 2),
                 assists=random.randint(0, 2),
