@@ -1,22 +1,22 @@
-# Football Match Prediction System
+# Windsurf Analytics
 
-A comprehensive football match analysis and prediction system that uses machine learning to predict match outcomes, scores, and statistics.
+A comprehensive windsurfing performance and equipment recommendation system that uses weather data and athlete profiles to provide personalized equipment recommendations and performance analysis.
 
 ## Features
 
-- **Match Prediction**: Predicts match outcomes (Home Win/Draw/Away Win) with probability scores
-- **Score Prediction**: Predicts most likely scores and goal expectations
-- **Team Statistics**: Detailed team performance metrics and form analysis
-- **Historical Data**: Analysis of historical match data
-- **API Endpoints**: RESTful API for integration with other systems
-- **Admin Dashboard**: Web interface for monitoring and managing predictions
+- **Weather Integration**: Real-time weather data integration from Open-Meteo API
+- **Equipment Recommendations**: Personalized sail and board recommendations based on weather conditions and athlete profile
+- **Performance Tracking**: Track race results and performance metrics
+- **Location Management**: Manage your favorite windsurfing spots
+- **User Profiles**: Personalized athlete profiles with equipment inventory
+- **Responsive Dashboard**: Modern web interface for all your windsurfing analytics
 
 ## Installation
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/football-prediction-system.git
-   cd football-prediction-system
+   git clone https://github.com/yourusername/windsurf-analytics.git
+   cd windsurf-analytics
    ```
 
 2. Create a virtual environment and activate it:

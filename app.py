@@ -1,21 +1,25 @@
 import datetime
 from flask import Flask, render_template, jsonify, request, redirect, url_for, flash
-from models import db, Team, Match, Prediction
-from ai_predictor import AIPredictor
+from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate
 from datetime import datetime, timedelta
 import os
+from dotenv import load_dotenv
 from sqlalchemy import or_
 
 # Initialize Flask app
 app = Flask(__name__)
-app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-key")
+basedir = os.path.abspath(os.path.dirname(__file__))
+load_dotenv(os.path.join(basedir, '.env'))
 
-# Database configuration
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///football.db'
+# Configuration
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key')
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL') or \
+    f'sqlite:///{os.path.join(basedir, "app.db")}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Initialize db with app
-db.init_app(app)
+db = SQLAlchemy(app)
 
 # Initialize AI predictor
 predictor = AIPredictor(db.session)
@@ -66,19 +70,199 @@ def index():
 @app.route('/teams')
 def teams():
     """Get all teams"""
-    git add .
+    from flask import Flask, jsonify
+from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate
+from datetime import datetime
+import os
+from dotenv import load_dotenv
+
+# Uygulama ve veritabanı başlatma
+app = Flask(__name__)
+basedir = os.path.abspath(os.path.dirname(__file__))
+load_dotenv(os.path.join(basedir, '.env'))
+
+# Yapılandırma
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'gizli-anahtar-buraya')
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL') or \
+    f'sqlite:///{os.path.join(basedir, "app.db")}'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+db = SQLAlchemy(app)
+migrate = Migrate(app, db)
+
+# Modeller
+class Country(db.Model):
+    __tablename__ = 'countries'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False, unique=True)
+    code = db.Column(db.String(3), unique=True, nullable=False)
+    flag = db.Column(db.String(255))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+class Team(db.Model):
+    __tablename__ = 'teams'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    short_name = db.Column(db.String(10))
+    country_id = db.Column(db.Integer, db.ForeignKey('countries.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+# API Rotaları
+@app.route('/')
+def index():
+    return jsonify({"message": "Football Match Prediction API"})
+
+@app.route('/teams')
+def teams():
+    """Tüm takımları getir"""
+    teams = Team.query.all()
+    return jsonify([{"id": team.id, "name": team.name} for team in teams])
+
+if __name__ == '__main__':
+    with app.app_context():
+        db.create_all()  # Veritabanı tablolarını oluştur
+    app.run(debug=True)from flask import Flask, jsonify
+from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate
+from datetime import datetime
+import os
+from dotenv import load_dotenv
+
+# Uygulama ve veritabanı başlatma
+app = Flask(__name__)
+basedir = os.path.abspath(os.path.dirname(__file__))
+load_dotenv(os.path.join(basedir, '.env'))
+
+# Yapılandırma
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'gizli-anahtar-buraya')
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL') or \
+    f'sqlite:///{os.path.join(basedir, "app.db")}'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+db = SQLAlchemy(app)
+migrate = Migrate(app, db)
+
+# Modeller
+class Country(db.Model):
+    __tablename__ = 'countries'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False, unique=True)
+    code = db.Column(db.String(3), unique=True, nullable=False)
+    flag = db.Column(db.String(255))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+class Team(db.Model):
+    __tablename__ = 'teams'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    short_name = db.Column(db.String(10))
+    country_id = db.Column(db.Integer, db.ForeignKey('countries.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+# API Rotaları
+@app.route('/')
+def index():
+    return jsonify({"message": "Football Match Prediction API"})
+
+@app.route('/teams')
+def teams():
+    """Tüm takımları getir"""
+    teams = Team.query.all()
+    return jsonify([{"id": team.id, "name": team.name} for team in teams])
+
+if __name__ == '__main__':
+    with app.app_context():
+        db.create_all()  # Veritabanı tablolarını oluştur
+    app.run(debug=True)git add .
 git commit -m "Yapılan değişikliklerin açıklaması"
-git push# Klasörleri oluştur
+git push# Initialize Flask app
+app = Flask(__name__)
+basedir = os.path.abspath(os.path.dirname(__file__))
+load_dotenv(os.path.join(basedir, '.env'))
+
+# Configuration
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key')
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL') or \
+    f'sqlite:///{os.path.join(basedir, "app.db")}'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# Initialize db with app
+db = SQLAlchemy(app)
+
+# Initialize AI predictor
+predictor = AIPredictor(db.session)
+
+# Create database tables
+with app.app_context():
+    db.create_all()# Klasörleri oluştur
 mkdir -p app/models app/api app/services
 # Boş dosyaları oluştur
-New-Item -ItemType File -Path "app/__init__.py"
-New-Item -ItemType File -Path "app/models/__init__.py"
-New-Item -ItemType File -# Klasörleri oluştur
-mkdir -p app/models app/api app/services
-# Boş dosyaları oluştur
-New-Item -ItemType File -Path "app/__init__.py"
-New-Item -ItemType File -Path "app/models/__init__.py"
-New-Item -ItemType File -http://localhost:5000http://localhost:5000teams = Team.query.all()
+# Ana sayfayı test et
+curl http://127.0.0.1:5000/
+
+# Takımları listele (şu an boş olacak)
+curl http://127.0.0.1:5000/teamsfrom flask import Flask, jsonify
+from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate
+from datetime import datetime
+import os
+from dotenv import load_dotenv
+
+# Uygulama ve veritabanı başlatma
+app = Flask(__name__)
+basedir = os.path.abspath(os.path.dirname(__file__))
+load_dotenv(os.path.join(basedir, '.env'))
+
+# Yapılandırma
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'gizli-anahtar-buraya')
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL') or \
+    f'sqlite:///{os.path.join(basedir, "app.db")}'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+db = SQLAlchemy(app)
+migrate = Migrate(app, db)
+
+# Modeller
+class Country(db.Model):
+    __tablename__ = 'countries'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False, unique=True)
+    code = db.Column(db.String(3), unique=True, nullable=False)
+    flag = db.Column(db.String(255))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+class Team(db.Model):
+    __tablename__ = 'teams'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    short_name = db.Column(db.String(10))
+    country_id = db.Column(db.Integer, db.ForeignKey('countries.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+# API Rotaları
+@app.route('/')
+def index():
+    return jsonify({"message": "Football Match Prediction API"})
+
+@app.route('/teams')
+def teams():
+    """Tüm takımları getir"""
+    teams = Team.query.all()
+    return jsonify([{"id": team.id, "name": team.name} for team in teams])
+
+if __name__ == '__main__':
+    with app.app_context():
+        db.create_all()  # Veritabanı tablolarını oluştur
+    app.run(debug=True)@app.route('/api/teams', methods=['GET'])
+def teams():
+    teams = Team.query.all()
     return {'teams': [team.name for team in teams]}
 
 @app.route('/api/predict/<int:match_id>', methods=['GET'])
@@ -1243,25 +1427,7 @@ def make_shell_context():
     }
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)http://localhost:5000flask shell
->>> from app import db
->>> from app.models import Country
->>> country = Country(name='Türkiye', code='TUR')
->>> db.session.add(country)
->>> db.session.commit()
->>> Country.query.all()flask shell
->>> from app import db
->>> from app.models import Country
->>> country = Country(name='Türkiye', code='TUR')
->>> db.session.add(country)
->>> db.session.commit()
->>> Country.query.all()flask shell
->>> from app import db
->>> from app.models import Country
->>> country = Country(name='Türkiye', code='TUR')
->>> db.session.add(country)
->>> db.session.commit()
->>> Country.query.all()flask shell
+    app.run(host='0.0.0.0', port=5000, debug=True)flask shell
 >>> from app import db
 >>> from app.models import Country
 >>> country = Country(name='Türkiye', code='TUR')

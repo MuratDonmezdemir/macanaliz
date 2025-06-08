@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block title %}About - Windsurf Analytics{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 class="mb-4">About Windsurf Analytics</h1>
+    
+    <div class="row">
+        <div class="col-lg-8">
+            <p class="lead">Windsurf Analytics is an AI-powered platform designed to help windsurfers improve their performance and make better equipment choices.</p>
+            
+            <h3 class="mt-4">Our Mission</h3>
+            <p>Our mission is to help windsurfers of all levels improve their performance through data-driven insights and AI-powered recommendations.</p>
+            
+            <h3 class="mt-4">Features</h3>
+            <ul>
+                <li>Performance tracking and analysis</li>
+                <li>AI-powered equipment recommendations</li>
+                <li>Weather condition analysis</li>
+                <li>Race result tracking</li>
+                <li>Personalized training insights</li>
+            </ul>
+            
+            <h3 class="mt-4">How It Works</h3>
+            <p>Our platform uses machine learning algorithms to analyze your performance data, weather conditions, and equipment choices to provide personalized recommendations.</p>
+            
+            <div class="card mt-4">
+                <div class="card-body">
+                    <h5 class="card-title">Get Started</h5>
+                    <p class="card-text">Ready to improve your windsurfing performance?</p>
+                    <a href="{{ url_for('auth.login') }}" class="btn btn-primary">Login or Sign Up</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

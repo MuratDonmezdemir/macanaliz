@@ -1,37 +1,57 @@
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
+from flask_login import LoginManager
 from flask_migrate import Migrate
-import os
-from dotenv import load_dotenv
+from config import config
+from datetime import datetime
 
-# Initialize extensions
 db = SQLAlchemy()
-migrate = Migrate()
+login_manager = LoginManager()
+login_manager.login_view = 'auth.login'
 
-def create_app(config_class=None):
-    """Create and configure the Flask application."""
+def create_app(config_name='default'):
     app = Flask(__name__)
-    
-    # Load environment variables
-    basedir = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
-    load_dotenv(os.path.join(basedir, '.env'))
-    
-    # Default configuration
-    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key')
-    app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL') or \
-        f'sqlite:///{os.path.join(basedir, "app.db")}'
-    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    app.config.from_object(config[config_name])
     
     # Initialize extensions
     db.init_app(app)
-    migrate.init_app(app, db)
+    login_manager.init_app(app)
+    migrate = Migrate(app, db)
     
     # Register blueprints
-    from app.routes import main_bp
-    app.register_blueprint(main_bp)
+    from .routes.main import bp as main_bp
+    from .routes.auth import bp as auth_bp
+    from .routes.api import bp as api_bp
     
-    # Create database tables
-    with app.app_context():
-        db.create_all()
+    app.register_blueprint(main_bp)
+    app.register_blueprint(auth_bp, url_prefix='/auth')
+    app.register_blueprint(api_bp, url_prefix='/api')
+    
+    # Register custom filters
+    @app.template_filter('datetimeformat')
+    def datetimeformat(value, format='%Y-%m-%d %H:%M'):
+        if value is None:
+            return ""
+        if isinstance(value, str):
+            value = datetime.strptime(value, '%Y-%m-%dT%H:%M:%S')
+        return value.strftime(format)
+    
+    @app.template_filter('round')
+    def round_filter(value, decimals=0):
+        if value is None:
+            return ""
+        try:
+            return round(float(value), decimals)
+        except (ValueError, TypeError):
+            return value
+    
+    # Error handlers
+    @app.errorhandler(404)
+    def not_found(error):
+        return {'error': 'Not found'}, 404
+    
+    @app.errorhandler(500)
+    def server_error(error):
+        return {'error': 'Internal server error'}, 500
     
     return app

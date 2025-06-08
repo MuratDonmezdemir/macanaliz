@@ -1,0 +1,197 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Windsurf Analytics{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 class="mb-4">Dashboard</h1>
+    
+    {% if not location %}
+        <div class="alert alert-warning">
+            No location found. Please add a location to see weather and equipment recommendations.
+        </div>
+    {% else %}
+        <!-- Location and Weather Card -->
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-geo-alt"></i> {{ location.name }}
+                    <small class="float-end">
+                        {% if weather %}
+                            {{ weather.timestamp|datetimeformat('%Y-%m-%d %H:%M') }}
+                        {% endif %}
+                    </small>
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if weather %}
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="display-4 me-3">
+                                {{ "%.1f"|format(weather.temperature) }}°C
+                            </div>
+                            <div>
+                                <div class="h5 mb-0">
+                                    {{ weather.wind_speed|round(1) }} m/s
+                                    <small class="text-muted">Wind</small>
+                                </div>
+                                <div class="text-muted">
+                                    Gusts: {{ weather.wind_gust|round(1) }} m/s
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-6">
+                                <div class="text-muted">Wind Direction</div>
+                                <div class="h5">{{ weather.wind_direction|round(0) }}°</div>
+                            </div>
+                            {% if weather.wave_height is not none %}
+                            <div class="col-6">
+                                <div class="text-muted">Wave Height</div>
+                                <div class="h5">{{ "%.1f"|format(weather.wave_height) }} m</div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div id="wind-direction" class="wind-direction">
+                            <div class="compass">
+                                <div class="direction">N</div>
+                                <div class="arrow" style="transform: rotate({{ weather.wind_direction }}deg);">
+                                    <i class="bi bi-arrow-up"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <div class="alert alert-warning">
+                    Could not load weather data for this location.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Equipment Recommendations -->
+        {% if recommendations and not recommendations.get('error') %}
+        <div class="row">
+            {% if recommendations.sail %}
+            <div class="col-md-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0">
+                            <i class="bi bi-wind"></i> Recommended Sail
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <h4 class="card-title">
+                            {{ recommendations.sail.best_match.size }}m² {{ recommendations.sail.best_match.brand }} {{ recommendations.sail.best_match.model }}
+                        </h4>
+                        <p class="card-text">{{ recommendations.sail.reasoning }}</p>
+                        <div class="progress mb-3">
+                            <div class="progress-bar bg-success" role="progressbar" 
+                                 style="width: {{ 100 - (recommendations.sail.best_match.size_difference * 20) }}%" 
+                                 aria-valuenow="{{ 100 - (recommendations.sail.best_match.size_difference * 20) }}" 
+                                 aria-valuemin="0" 
+                                 aria-valuemax="100">
+                                Match: {{ 100 - (recommendations.sail.best_match.size_difference * 20)|round(0)|int }}%
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            
+            {% if recommendations.board %}
+            <div class="col-md-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0">
+                            <i class="bi bi-brightness-high"></i> Recommended Board
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <h4 class="card-title">
+                            {{ recommendations.board.best_match.volume }}L {{ recommendations.board.best_match.brand }} {{ recommendations.board.best_match.model }}
+                        </h4>
+                        <p class="card-text">{{ recommendations.board.reasoning }}</p>
+                        <div class="progress">
+                            <div class="progress-bar bg-success" role="progressbar" 
+                                 style="width: {{ 100 - (recommendations.board.best_match.volume_difference) }}%" 
+                                 aria-valuenow="{{ 100 - (recommendations.board.best_match.volume_difference) }}" 
+                                 aria-valuemin="0" 
+                                 aria-valuemax="100">
+                                Match: {{ (100 - (recommendations.board.best_match.volume_difference * 0.5))|round(0)|int }}%
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        {% elif recommendations and recommendations.get('error') %}
+        <div class="alert alert-warning">
+            {{ recommendations.error }}
+        </div>
+        {% else %}
+        <div class="alert alert-info">
+            Complete your athlete profile to get personalized equipment recommendations.
+        </div>
+        {% endif %}
+    {% endif %}
+    
+    <!-- Recent Activities -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">Recent Activities</h5>
+        </div>
+        <div class="card-body">
+            <p class="text-muted">Your recent windsurfing activities will appear here.</p>
+            <!-- Placeholder for activities -->
+        </div>
+    </div>
+</div>
+
+<!-- Add some custom CSS for the wind direction compass -->
+<style>
+.wind-direction {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+}
+
+.compass {
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    border: 2px solid #0d6efd;
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.compass .direction {
+    position: absolute;
+    top: -15px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-weight: bold;
+    color: #0d6efd;
+}
+
+.arrow {
+    font-size: 2rem;
+    color: #dc3545;
+    transition: transform 0.5s ease;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Add any JavaScript for the dashboard here
+</script>
+{% endblock %}

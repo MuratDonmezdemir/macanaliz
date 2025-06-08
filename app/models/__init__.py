@@ -1,9 +1,11 @@
-from .base import db
-from .country import Country
-from .league import League
-from .team import Team
-from .match import Match
-from .prediction import Prediction
-from .team_statistics import TeamStatistics
+from .user import User
+from .athlete import Athlete
+from .equipment import Equipment, EquipmentType
+from .location import Location
+from .race import Race, RaceResult
+from .weather import WeatherData
 
-__all__ = ['db', 'Country', 'League', 'Team', 'Match', 'Prediction', 'TeamStatistics']
+__all__ = [
+    'User', 'Athlete', 'Equipment', 'EquipmentType', 
+    'Location', 'Race', 'RaceResult', 'WeatherData'
+]
