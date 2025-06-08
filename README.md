@@ -1,104 +1,133 @@
-# Windsurf Analytics
+# MacAnaliz
 
-A comprehensive windsurfing performance and equipment recommendation system that uses weather data and athlete profiles to provide personalized equipment recommendations and performance analysis.
+[![Python Version](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-## Features
+Futbol maç analiz ve tahmin uygulaması. Bu uygulama, futbol maçları hakkında detaylı analizler sunar ve maç sonuçları için tahminlerde bulunur.
 
-- **Weather Integration**: Real-time weather data integration from Open-Meteo API
-- **Equipment Recommendations**: Personalized sail and board recommendations based on weather conditions and athlete profile
-- **Performance Tracking**: Track race results and performance metrics
-- **Location Management**: Manage your favorite windsurfing spots
-- **User Profiles**: Personalized athlete profiles with equipment inventory
-- **Responsive Dashboard**: Modern web interface for all your windsurfing analytics
+## Özellikler
 
-## Installation
+- Kapsamlı futbol maç analizleri
+- Tahmin motoru ile maç sonuçları tahmini
+- Takım ve oyuncu istatistikleri
+- Lige özel analizler
+- API desteği
 
-1. Clone the repository:
+## Kurulum
+
+1. Gereksinimler:
+   - Python 3.8 veya üzeri
+   - pip (Python paket yöneticisi)
+
+2. Depoyu klonlayın:
    ```bash
-   git clone https://github.com/yourusername/windsurf-analytics.git
-   cd windsurf-analytics
+   git clone https://github.com/kullaniciadi/macanaliz.git
+   cd macanaliz
    ```
 
-2. Create a virtual environment and activate it:
+3. Sanal ortam oluşturma (önerilir):
    ```bash
    python -m venv venv
    .\venv\Scripts\activate  # Windows
    source venv/bin/activate  # Linux/Mac
    ```
 
-3. Install the required packages:
+4. Gerekli paketlerin yüklenmesi:
    ```bash
    pip install -r requirements.txt
    ```
 
-4. Initialize the database:
+5. Geliştirme için ek paketler (isteğe bağlı):
    ```bash
-   python init_db.py
+   pip install -r requirements-dev.txt
    ```
 
-5. Create test data (optional):
-   ```bash
-   python init_test_data.py
-   ```
+6. Ortam değişkenlerinin ayarlanması:
+   - `.env.example` dosyasını `.env` olarak kopyalayın
+   - Gerekli değişkenleri düzenleyin
 
-## Usage
+## Veritabanı
 
-1. Start the development server:
-   ```bash
-   python app.py
-   ```
+Uygulama SQLite kullanmaktadır (geliştirme ortamı için). Veritabanını başlatmak için:
 
-2. Access the web interface at `http://localhost:8000`
+```bash
+flask db upgrade
+```
 
-3. Access the admin dashboard at `http://localhost:8000/dashboard`
+## Çalıştırma
 
-## API Endpoints
+Geliştirme sunucusunu başlatmak için:
 
-- `GET /` - Homepage with upcoming matches and predictions
-- `GET /api/predict/<int:match_id>` - Get prediction for a specific match
-- `POST /api/train` - Retrain the prediction model
-- `GET /api/teams/<int:team_id>/stats` - Get team statistics
+```bash
+flask run
+```
 
-## Project Structure
+Veya production modunda çalıştırmak için:
+
+```bash
+gunicorn -w 4 'app:create_app()'
+```
+
+## API Dokümantasyonu
+
+API dokümantasyonuna şu adresten ulaşabilirsiniz: `http://localhost:5000/api/docs`
+
+## Proje Yapısı
 
 ```
 .
-├── app.py                 # Main application file
-├── ai_predictor.py        # AI prediction engine
-├── models.py              # Database models
-├── requirements.txt       # Python dependencies
-├── init_db.py             # Database initialization
-├── init_test_data.py      # Test data generation
-├── static/                # Static files (CSS, JS, images)
-│   ├── css/
-│   └── js/
-└── templates/             # HTML templates
-    ├── base.html
-    ├── index.html
-    └── admin/
-        └── dashboard.html
+├── app/                   # Ana uygulama klasörü
+│   ├── __init__.py       # Uygulama fabrikası
+│   ├── models/           # Veritabanı modelleri
+│   ├── routes/           # Rotalar
+│   ├── services/         # İş mantığı
+│   ├── static/           # Statik dosyalar (CSS, JS, resimler)
+│   └── templates/        # Şablonlar
+├── migrations/           # Veritabanı migrasyonları
+├── tests/               # Testler
+├── .env                 # Ortam değişkenleri
+├── .gitignore
+├── config.py            # Yapılandırma ayarları
+├── requirements.txt     # Bağımlılıklar
+├── requirements-dev.txt # Geliştirme bağımlılıkları
+└── README.md           # Bu dosya
 ```
 
-## Machine Learning Models
+## Test
 
-The system uses multiple machine learning models for different prediction tasks:
+Testleri çalıştırmak için:
 
-1. **Match Outcome Prediction**: XGBoost classifier for full-time results
-2. **Half-Time Prediction**: LightGBM classifier for half-time results
-3. **Goals Prediction**: CatBoost classifier for total goals
-4. **BTTS (Both Teams to Score)**: Random Forest classifier
-5. **Over/Under**: Gradient Boosting classifier
+```bash
+pytest
+```
 
-## License
+## Makine Öğrenmesi Modelleri
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+Sistem farklı tahmin görevleri için çeşitli makine öğrenmesi modelleri kullanır:
 
-## Contributing
+1. **Maç Sonucu Tahmini**: XGBoost sınıflandırıcı
+2. **İlk Yarı Sonucu**: LightGBM sınıflandırıcı
+3. **Gol Sayısı Tahmini**: CatBoost regresyon
+4. **İki Takım da Gol Atar Mı?**: Random Forest sınıflandırıcı
+5. **Alt/Üst Tahmini**: Gradient Boosting sınıflandırıcı
 
-1. Fork the project
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
+## Katkıda Bulunma
+
+1. Bu repoyu fork edin
+2. Yeni bir branch oluşturun (`git checkout -b feature/YeniOzellik`)
+3. Değişikliklerinizi commit edin (`git commit -am 'Yeni özellik eklendi'`)
+4. Branch'inize push yapın (`git push origin feature/YeniOzellik`)
+5. Bir Pull Request açın
+
+## Lisans
+
+Bu proje MIT lisansı altında lisanslanmıştır - detaylar için `LICENSE` dosyasına bakınız.
+
+## İletişim
+
+Proje Yöneticisi: [İsminiz] - [email@example.com](mailto:email@example.com)
+
+Proje Linki: [https://github.com/kullaniciadi/macanaliz](https://github.com/kullaniciadi/macanaliz)
 5. Open a Pull Request
 
 ## Acknowledgments

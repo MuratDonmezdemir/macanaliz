@@ -1,45 +1,115 @@
 {% extends "base.html" %}
 
-{% block title %}Home - Windsurf Analytics{% endblock %}
+{% block title %}Futbol Analiz ve Tahmin{% endblock %}
 
 {% block content %}
-<div class="jumbotron text-center">
-    <h1 class="display-4">Welcome to Windsurf Analytics</h1>
-    <p class="lead">AI-powered windsurfing performance and equipment prediction platform</p>
-    <hr class="my-4">
-    
-    {% if current_user.is_authenticated %}
-        <p>Welcome back, {{ current_user.username }}!</p>
-        <a class="btn btn-primary btn-lg" href="#" role="button">Go to Dashboard</a>
-    {% else %}
-        <p>Get started by logging in or signing up to track your performance and get equipment recommendations.</p>
-        <a class="btn btn-primary btn-lg me-2" href="{{ url_for('auth.login') }}" role="button">Login</a>
-        <a class="btn btn-outline-primary btn-lg" href="#" role="button">Sign Up</a>
-    {% endif %}
-</div>
+<div class="container mt-4">
+    <div class="jumbotron text-center bg-light p-4 rounded">
+        <h1 class="display-4">Futbol Maç Analiz Platformu</h1>
+        <p class="lead">Tüm liglerden canlı skorlar, istatistikler ve tahminler</p>
+        <hr class="my-4">
+        
+        {% if current_user.is_authenticated %}
+            <p>Hoş geldiniz, {{ current_user.username }}! Kontrol panelinize yönlendiriliyorsunuz...</p>
+            <a class="btn btn-primary btn-lg" href="{{ url_for('main.dashboard') }}" role="button">Panele Git</a>
+        {% else %}
+            <p>Giriş yaparak tüm özelliklere erişin ve maç tahminlerinizi yönetin.</p>
+            <a class="btn btn-primary btn-lg me-2" href="{{ url_for('auth.login') }}" role="button">Giriş Yap</a>
+            <a class="btn btn-outline-primary btn-lg" href="{{ url_for('auth.register') }}" role="button">Kayıt Ol</a>
+        {% endif %}
+    </div>
 
-<div class="row mt-5">
-    <div class="col-md-4 mb-4">
-        <div class="card h-100">
-            <div class="card-body">
-                <h5 class="card-title">Performance Analysis</h5>
-                <p class="card-text">Analyze your windsurfing performance with detailed statistics and insights.</p>
-            </div>
+    <!-- Yaklaşan Maçlar -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <h2 class="mb-3">Yaklaşan Maçlar</h2>
+            
+            {% if error %}
+                <div class="alert alert-warning">{{ error }}</div>
+            {% endif %}
+            
+            {% if matches %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Tarih</th>
+                                <th>Lig</th>
+                                <th>Ev Sahibi</th>
+                                <th>Skor</th>
+                                <th>Deplasman</th>
+                                <th>Durum</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for match in matches %}
+                                <tr>
+                                    <td>{{ match.utcDate|datetimeformat('%d.%m.%Y %H:%M') }}</td>
+                                    <td>
+                                        <img src="{{ match.competition.emblem }}" alt="{{ match.competition.name }}" style="height: 20px; margin-right: 5px;">
+                                        {{ match.competition.name }}
+                                    </td>
+                                    <td>
+                                        <img src="{{ match.homeTeam.crest }}" alt="{{ match.homeTeam.name }}" style="height: 20px; margin-right: 5px;">
+                                        {{ match.homeTeam.shortName }}
+                                    </td>
+                                    <td>
+                                        {% if match.score.fullTime.home is not none %}
+                                            {{ match.score.fullTime.home }} - {{ match.score.fullTime.away }}
+                                        {% else %}
+                                            - : -
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <img src="{{ match.awayTeam.crest }}" alt="{{ match.awayTeam.name }}" style="height: 20px; margin-right: 5px;">
+                                        {{ match.awayTeam.shortName }}
+                                    </td>
+                                    <td>
+                                        {% if match.status == 'FINISHED' %}
+                                            <span class="badge bg-secondary">Bitti</span>
+                                        {% elif match.status == 'IN_PLAY' %}
+                                            <span class="badge bg-danger">Devam Ediyor</span>
+                                        {% else %}
+                                            <span class="badge bg-primary">Oynanacak</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="alert alert-info">Yaklaşan maç bulunamadı.</div>
+            {% endif %}
         </div>
     </div>
-    <div class="col-md-4 mb-4">
-        <div class="card h-100">
-            <div class="card-body">
-                <h5 class="card-title">Equipment Recommendations</h5>
-                <p class="card-text">Get AI-powered equipment recommendations based on conditions and your style.</p>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4 mb-4">
-        <div class="card h-100">
-            <div class="card-body">
-                <h5 class="card-title">Weather Integration</h5>
-                <p class="card-text">Get real-time weather data and forecasts for your favorite spots.</p>
+
+    <!-- Popüler Ligler -->
+    <div class="row mt-5">
+        <div class="col-12">
+            <h2 class="mb-3">Popüler Ligler</h2>
+            <div class="row">
+                {% for comp in [
+                    {'code': 'PL', 'name': 'Premier League'},
+                    {'code': 'PD', 'name': 'La Liga'},
+                    {'code': 'SA', 'name': 'Serie A'},
+                    {'code': 'BL1', 'name': 'Bundesliga'},
+                    {'code': 'FL1', 'name': 'Ligue 1'},
+                    {'code': 'PPL', 'name': 'Primeira Liga'},
+                    {'code': 'CL', 'name': 'Şampiyonlar Ligi'},
+                    {'code': 'EL', 'name': 'Avrupa Ligi'}
+                ] %}
+                    <div class="col-md-3 mb-4">
+                        <div class="card h-100">
+                            <div class="card-body text-center">
+                                <img src="{{ url_for('static', filename='img/leagues/' + comp.code|lower + '.png') }}" 
+                                     alt="{{ comp.name }}" style="height: 50px; margin-bottom: 10px;">
+                                <h5 class="card-title">{{ comp.name }}</h5>
+                                <a href="{{ url_for('main.competition', code=comp.code) }}" class="btn btn-outline-primary btn-sm">Ligi Görüntüle</a>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
             </div>
         </div>
     </div>

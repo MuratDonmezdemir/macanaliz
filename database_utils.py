@@ -1,5 +1,5 @@
 from app import db
-from models import Team, Player, Match, Injury, TeamStatistics, Prediction
+from app.models import Team, Player, Match, Injury, TeamStatistics, Prediction
 from datetime import datetime, timedelta
 import random
 

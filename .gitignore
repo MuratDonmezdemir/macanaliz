@@ -1,5 +1,7 @@
-# Environment variables
+# Environment
 .env
+.env.*
+!.env.example
 
 # Python
 __pycache__/
@@ -22,8 +24,12 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+.pytest_cache/
+.coverage
+htmlcov/
 
 # Virtual Environment
+.venv/
 venv/
 ENV/
 
@@ -32,12 +38,15 @@ ENV/
 .vscode/
 *.swp
 *.swo
+*.swn
 
 # Database
 *.db
 *.sqlite3
+instance/
 
 # Logs
+logs/
 *.log
 
 # OS generated files
@@ -48,3 +57,20 @@ ENV/
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# Project specific
+ai_models/
+instance/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Local development
+local_settings.py
+
+# Caches
+.cache/
+.mypy_cache/
+
+# Testing
+.coverage
