@@ -1,6 +1,7 @@
-from .base import BaseModel
+/from .base import BaseModel
 from sqlalchemy import Column, Integer, Float, String, ForeignKey, DateTime
 from sqlalchemy.orm import relationship
+import datetime
 
 class TeamStatistics(BaseModel):
     """Takım istatistikleri modeli"""
