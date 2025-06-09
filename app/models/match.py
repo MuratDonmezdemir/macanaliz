@@ -1,5 +1,7 @@
 from datetime import datetime
 from sqlalchemy.dialects.postgresql import JSON
+from sqlalchemy.orm import relationship
+
 from .base import BaseModel
 from app.extensions import db
 
@@ -20,26 +22,37 @@ class Match(BaseModel):
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Relationships
-    # Using backref instead of back_populates to avoid circular imports
     stadium = db.relationship('Stadium', backref='match_list')
     season = db.relationship('Season', backref='match_list')
+    home_team = db.relationship('Team', foreign_keys=[home_team_id])
+    away_team = db.relationship('Team', foreign_keys=[away_team_id])
+    predictions = db.relationship(
+        'Prediction', 
+        back_populates='match',
+        lazy='dynamic',
+        cascade='all, delete-orphan'
+    )
     
     def __repr__(self):
-        return f'<Match {self.home_team_id} vs {self.away_team_id}>'
+        return f'<Match {self.home_team_id} vs {self.away_team_id} ({self.match_date})>'
     
     def to_dict(self):
         """Maç bilgilerini sözlük olarak döndürür"""
         return {
             'id': self.id,
-            'home_team': self.home_team.to_dict(),
-            'away_team': self.away_team.to_dict(),
-            'match_date': self.match_date.isoformat(),
+            'home_team': self.home_team.to_dict() if self.home_team else None,
+            'away_team': self.away_team.to_dict() if self.away_team else None,
+            'match_date': self.match_date.isoformat() if self.match_date else None,
             'status': self.status,
             'home_score': self.home_score,
             'away_score': self.away_score,
             'stadium': self.stadium.to_dict() if self.stadium else None,
             'season': self.season.to_dict() if self.season else None
         }
+        
+    def get_prediction_for_user(self, user_id):
+        """Kullanıcının bu maç için yaptığı tahmini döndürür"""
+        return self.predictions.filter_by(user_id=user_id).first()
 
 
 class MatchStatistics(BaseModel):
@@ -49,16 +62,20 @@ class MatchStatistics(BaseModel):
     id = db.Column(db.Integer, primary_key=True)
     match_id = db.Column(db.Integer, db.ForeignKey('matches.id'), nullable=False)
     team_id = db.Column(db.Integer, db.ForeignKey('teams.id'), nullable=False)
-    statistics = db.Column(JSON)  # JSON formatında istatistikler
+    statistics = db.Column(JSON)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
-    # İlişkiler
-    match = db.relationship('Match', backref=db.backref('match_statistics', lazy='dynamic'))
-    team = db.relationship('Team')
+    # Relationships
+    match = db.relationship(
+        'Match',
+        back_populates='match_statistics',
+        foreign_keys=[match_id]
+    )
+    team = db.relationship('Team', back_populates='match_statistics')
     
     def __repr__(self):
-        return f'<MatchStatistics {self.match_id} - {self.team_id}>'
+        return f'<MatchStatistics {self.match_id} - Team {self.team_id}>'
     
     def to_dict(self):
         """İstatistikleri sözlük olarak döndürür"""
@@ -67,40 +84,6 @@ class MatchStatistics(BaseModel):
             'match_id': self.match_id,
             'team_id': self.team_id,
             'statistics': self.statistics,
-            'created_at': self.created_at.isoformat(),
-            'updated_at': self.updated_at.isoformat()
-        }
-
-
-class Prediction(BaseModel):
-    """Maç tahmin modeli"""
-    __tablename__ = 'predictions'
-    
-    id = db.Column(db.Integer, primary_key=True)
-    match_id = db.Column(db.Integer, db.ForeignKey('matches.id'), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    home_goals = db.Column(db.Integer, nullable=False)
-    away_goals = db.Column(db.Integer, nullable=False)
-    confidence = db.Column(db.Float)  # Tahmin güven skoru
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
-    # İlişkiler
-    match = db.relationship('Match', backref=db.backref('predictions', lazy='dynamic'))
-    user = db.relationship('User')
-    
-    def __repr__(self):
-        return f'<Prediction {self.match_id} - {self.home_goals}:{self.away_goals}>'
-    
-    def to_dict(self):
-        """Tahmin bilgilerini sözlük olarak döndürür"""
-        return {
-            'id': self.id,
-            'match_id': self.match_id,
-            'user_id': self.user_id,
-            'home_goals': self.home_goals,
-            'away_goals': self.away_goals,
-            'confidence': self.confidence,
-            'created_at': self.created_at.isoformat(),
-            'updated_at': self.updated_at.isoformat()
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }

@@ -12,7 +12,9 @@ from .user import User
 from .stadium import Stadium
 from .league import League, Season, Standing
 from .team import Team
-from .match import Match, MatchStatistics, Prediction
+from .match import Match
+from .match import MatchStatistics
+from .prediction import Prediction
 from .team_statistics import TeamStatistics
 from .player import Player, PlayerStatistics
 from .athlete import Athlete

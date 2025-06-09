@@ -95,9 +95,7 @@ def register_blueprints(app):
     
     # Blueprint'leri kaydet
     app.register_blueprint(auth_bp, url_prefix='/auth')
-    app.register_blueprint(main_bp)git add .
-git commit -m "Proje yapısı güncellendi ve auth sistemi düzeltildi"
-git push origin main
+    app.register_blueprint(main_bp)
     app.register_blueprint(api_bp, url_prefix='/api')
     
     # Debug için kayıtlı endpoint'leri göster

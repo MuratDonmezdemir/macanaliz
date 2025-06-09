@@ -1,197 +1,129 @@
 {% extends "base.html" %}
 
-{% block title %}Dashboard - Windsurf Analytics{% endblock %}
+{% block title %}Kontrol Paneli - Maç Analiz{% endblock %}
 
 {% block content %}
 <div class="container">
-    <h1 class="mb-4">Dashboard</h1>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="mb-0">Hoş Geldiniz, {{ current_user.username }}!</h1>
+        <a href="{{ url_for('main.profile') }}" class="btn btn-outline-primary">
+            <i class="bi bi-person-circle"></i> Profilim
+        </a>
+    </div>
     
-    {% if not location %}
-        <div class="alert alert-warning">
-            No location found. Please add a location to see weather and equipment recommendations.
-        </div>
-    {% else %}
-        <!-- Location and Weather Card -->
-        <div class="card mb-4">
-            <div class="card-header bg-primary text-white">
-                <h5 class="mb-0">
-                    <i class="bi bi-geo-alt"></i> {{ location.name }}
-                    <small class="float-end">
-                        {% if weather %}
-                            {{ weather.timestamp|datetimeformat('%Y-%m-%d %H:%M') }}
-                        {% endif %}
-                    </small>
-                </h5>
-            </div>
-            <div class="card-body">
-                {% if weather %}
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="d-flex align-items-center mb-3">
-                            <div class="display-4 me-3">
-                                {{ "%.1f"|format(weather.temperature) }}°C
-                            </div>
-                            <div>
-                                <div class="h5 mb-0">
-                                    {{ weather.wind_speed|round(1) }} m/s
-                                    <small class="text-muted">Wind</small>
-                                </div>
-                                <div class="text-muted">
-                                    Gusts: {{ weather.wind_gust|round(1) }} m/s
-                                </div>
-                            </div>
+    <!-- Hızlı Erişim Kartları -->
+    <div class="row mb-4">
+        <div class="col-md-4 mb-3">
+            <div class="card bg-primary text-white h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="card-title">Maç Tahmini Yap</h5>
+                            <p class="card-text">Yeni bir maç için tahminde bulunun</p>
                         </div>
-                        <div class="row">
-                            <div class="col-6">
-                                <div class="text-muted">Wind Direction</div>
-                                <div class="h5">{{ weather.wind_direction|round(0) }}°</div>
-                            </div>
-                            {% if weather.wave_height is not none %}
-                            <div class="col-6">
-                                <div class="text-muted">Wave Height</div>
-                                <div class="h5">{{ "%.1f"|format(weather.wave_height) }} m</div>
-                            </div>
-                            {% endif %}
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div id="wind-direction" class="wind-direction">
-                            <div class="compass">
-                                <div class="direction">N</div>
-                                <div class="arrow" style="transform: rotate({{ weather.wind_direction }}deg);">
-                                    <i class="bi bi-arrow-up"></i>
-                                </div>
-                            </div>
-                        </div>
+                        <i class="bi bi-graph-up-arrow" style="font-size: 2.5rem;"></i>
                     </div>
                 </div>
-                {% else %}
-                <div class="alert alert-warning">
-                    Could not load weather data for this location.
+                <div class="card-footer bg-transparent border-0">
+                    <a href="#" class="btn btn-light">Hemen Başla</a>
                 </div>
-                {% endif %}
             </div>
         </div>
         
-        <!-- Equipment Recommendations -->
-        {% if recommendations and not recommendations.get('error') %}
-        <div class="row">
-            {% if recommendations.sail %}
-            <div class="col-md-6 mb-4">
-                <div class="card h-100">
-                    <div class="card-header bg-info text-white">
-                        <h5 class="mb-0">
-                            <i class="bi bi-wind"></i> Recommended Sail
-                        </h5>
-                    </div>
-                    <div class="card-body">
-                        <h4 class="card-title">
-                            {{ recommendations.sail.best_match.size }}m² {{ recommendations.sail.best_match.brand }} {{ recommendations.sail.best_match.model }}
-                        </h4>
-                        <p class="card-text">{{ recommendations.sail.reasoning }}</p>
-                        <div class="progress mb-3">
-                            <div class="progress-bar bg-success" role="progressbar" 
-                                 style="width: {{ 100 - (recommendations.sail.best_match.size_difference * 20) }}%" 
-                                 aria-valuenow="{{ 100 - (recommendations.sail.best_match.size_difference * 20) }}" 
-                                 aria-valuemin="0" 
-                                 aria-valuemax="100">
-                                Match: {{ 100 - (recommendations.sail.best_match.size_difference * 20)|round(0)|int }}%
-                            </div>
+        <div class="col-md-4 mb-3">
+            <div class="card bg-success text-white h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="card-title">Geçmiş Tahminlerim</h5>
+                            <p class="card-text">Önceki tahminlerinizi görüntüleyin</p>
                         </div>
+                        <i class="bi bi-clock-history" style="font-size: 2.5rem;"></i>
                     </div>
                 </div>
-            </div>
-            {% endif %}
-            
-            {% if recommendations.board %}
-            <div class="col-md-6 mb-4">
-                <div class="card h-100">
-                    <div class="card-header bg-info text-white">
-                        <h5 class="mb-0">
-                            <i class="bi bi-brightness-high"></i> Recommended Board
-                        </h5>
-                    </div>
-                    <div class="card-body">
-                        <h4 class="card-title">
-                            {{ recommendations.board.best_match.volume }}L {{ recommendations.board.best_match.brand }} {{ recommendations.board.best_match.model }}
-                        </h4>
-                        <p class="card-text">{{ recommendations.board.reasoning }}</p>
-                        <div class="progress">
-                            <div class="progress-bar bg-success" role="progressbar" 
-                                 style="width: {{ 100 - (recommendations.board.best_match.volume_difference) }}%" 
-                                 aria-valuenow="{{ 100 - (recommendations.board.best_match.volume_difference) }}" 
-                                 aria-valuemin="0" 
-                                 aria-valuemax="100">
-                                Match: {{ (100 - (recommendations.board.best_match.volume_difference * 0.5))|round(0)|int }}%
-                            </div>
-                        </div>
-                    </div>
+                <div class="card-footer bg-transparent border-0">
+                    <a href="#" class="btn btn-light">Tahminlerim</a>
                 </div>
             </div>
-            {% endif %}
         </div>
-        {% elif recommendations and recommendations.get('error') %}
-        <div class="alert alert-warning">
-            {{ recommendations.error }}
+        
+        <div class="col-md-4 mb-3">
+            <div class="card bg-info text-white h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="card-title">İstatistikler</h5>
+                            <p class="card-text">Tahmin performansınızı görün</p>
+                        </div>
+                        <i class="bi bi-bar-chart" style="font-size: 2.5rem;"></i>
+                    </div>
+                </div>
+                <div class="card-footer bg-transparent border-0">
+                    <a href="#" class="btn btn-light">İstatistikleri Gör</a>
+                </div>
+            </div>
         </div>
-        {% else %}
-        <div class="alert alert-info">
-            Complete your athlete profile to get personalized equipment recommendations.
-        </div>
-        {% endif %}
-    {% endif %}
+    </div>
     
-    <!-- Recent Activities -->
-    <div class="card">
-        <div class="card-header">
-            <h5 class="mb-0">Recent Activities</h5>
+    <!-- Yaklaşan Maçlar -->
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">
+                <i class="bi bi-calendar-event"></i> Yaklaşan Maçlar
+            </h5>
         </div>
         <div class="card-body">
-            <p class="text-muted">Your recent windsurfing activities will appear here.</p>
-            <!-- Placeholder for activities -->
+            {% if matches %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Tarih</th>
+                                <th>Lig</th>
+                                <th>Maç</th>
+                                <th>Durum</th>
+                                <th>İşlemler</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for match in matches %}
+                                <tr>
+                                    <td>{{ match.match_date|datetimeformat('%d.%m.%Y %H:%M') }}</td>
+                                    <td>{{ match.league.name }}</td>
+                                    <td>
+                                        {{ match.home_team.name }} vs {{ match.away_team.name }}
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-warning text-dark">Oynanmadı</span>
+                                    </td>
+                                    <td>
+                                        <a href="#" class="btn btn-sm btn-primary">Tahmin Yap</a>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="alert alert-info mb-0">
+                    Yakın zamanda oynanacak maç bulunmamaktadır.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Son Tahminlerim -->
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">
+                <i class="bi bi-clock-history"></i> Son Tahminlerim
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="alert alert-info">
+                Henüz tahmin yapmadınız. <a href="#" class="alert-link">Hemen bir maç seçip tahmin yapmaya başlayın</a>.
+            </div>
         </div>
     </div>
 </div>
-
-<!-- Add some custom CSS for the wind direction compass -->
-<style>
-.wind-direction {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100%;
-}
-
-.compass {
-    width: 150px;
-    height: 150px;
-    border-radius: 50%;
-    border: 2px solid #0d6efd;
-    position: relative;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-
-.compass .direction {
-    position: absolute;
-    top: -15px;
-    left: 50%;
-    transform: translateX(-50%);
-    font-weight: bold;
-    color: #0d6efd;
-}
-
-.arrow {
-    font-size: 2rem;
-    color: #dc3545;
-    transition: transform 0.5s ease;
-}
-</style>
-{% endblock %}
-
-{% block extra_js %}
-<script>
-// Add any JavaScript for the dashboard here
-</script>
 {% endblock %}
