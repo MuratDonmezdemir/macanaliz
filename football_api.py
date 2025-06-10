@@ -1,189 +1,211 @@
-import requests
-import json
 import os
+import json
+import time
+import logging
 from datetime import datetime, timedelta
-from models import Team, Match, Player
-from app import db
+from typing import Dict, List, Optional, Tuple, Union, Any
 
-class FootballDataAPI:
-    """Real football data integration"""
+import requests
+from flask import current_app
+from sqlalchemy.exc import SQLAlchemyError
+
+from app import db
+from app.models import Team, Match, Player
+from config import Config
+
+# Logging configuration
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+
+class FootballAPI:
+    """Football API integration class for fetching and processing football data."""
     
-    def __init__(self):
-        self.api_key = os.environ.get('FOOTBALL_API_KEY')
-        self.base_url = "https://api.football-data.org/v4"
-        self.headers = {
-            'X-Auth-Token': self.api_key
-        } if self.api_key else {}
+    def __init__(self, api_key: str = None, base_url: str = None):
+        """Initialize the Football API client.
         
-    def check_api_status(self):
-        """Check if API is available"""
+        Args:
+            api_key: Football API key (optional, will use from config if not provided)
+            base_url: Base URL for the API (optional, will use from config if not provided)
+        """
+        self.api_key = api_key or Config.FOOTBALL_API_KEY
+        self.base_url = base_url or Config.FOOTBALL_API_BASE_URL
+        self.headers = {'X-Auth-Token': self.api_key} if self.api_key else {}
+        self.rate_limit_remaining = 10
+        self.rate_limit_reset = 60
+        self.session = requests.Session()
+        self.session.headers.update(self.headers)
+    
+    def _make_request(self, endpoint: str, params: Optional[Dict] = None) -> Dict:
+        """Make a request to the Football API.
+        
+        Args:
+            endpoint: API endpoint (e.g., 'competitions/PL/teams')
+            params: Query parameters for the request
+            
+        Returns:
+            dict: JSON response from the API
+        """
         if not self.api_key:
-            return False, "API key not found"
+            logger.warning("No API key provided. Using sample data.")
+            return {}
+            
+        url = f"{self.base_url}/{endpoint}"
         
         try:
-            response = requests.get(f"{self.base_url}/competitions", headers=self.headers, timeout=10)
-            return response.status_code == 200, response.status_code
-        except Exception as e:
-            return False, str(e)
+            response = self.session.get(url, params=params, timeout=10)
+            response.raise_for_status()
+            
+            # Update rate limit info
+            self.rate_limit_remaining = int(response.headers.get('X-Requests-Available', 10))
+            self.rate_limit_reset = int(response.headers.get('X-RequestCounter-Reset', 60))
+            
+            return response.json()
+            
+        except requests.exceptions.RequestException as e:
+            logger.error(f"API request failed: {e}")
+            return {}
     
-    def get_league_teams(self, league_code='TR1'):
-        """Get teams from Turkish Super League"""
-        if not self.api_key:
-            print("No API key found, using sample data")
-            return self._get_sample_teams()
+    def get_competitions(self) -> List[Dict]:
+        """Get all available competitions.
         
+        Returns:
+            list: List of competition dictionaries
+        """
+        return self._make_request("competitions").get('competitions', [])
+    
+    def get_teams(self, competition_code: str, season: int = None) -> List[Dict]:
+        """Get teams for a specific competition.
+        
+        Args:
+            competition_code: Competition code (e.g., 'PL', 'PD', 'TR1')
+            season: Season year (e.g., 2024)
+            
+        Returns:
+            list: List of team dictionaries
+        """
+        params = {'season': season} if season else {}
+        endpoint = f"competitions/{competition_code}/teams"
+        return self._make_request(endpoint, params).get('teams', [])
+    
+    def get_matches(
+        self, 
+        competition_code: str = None, 
+        team_id: int = None, 
+        status: str = None,
+        date_from: str = None,
+        date_to: str = None,
+        limit: int = 10
+    ) -> List[Dict]:
+        """Get matches based on filters.
+        
+        Args:
+            competition_code: Filter by competition code
+            team_id: Filter by team ID
+            status: Filter by match status (e.g., 'FINISHED', 'SCHEDULED')
+            date_from: Start date (YYYY-MM-DD)
+            date_to: End date (YYYY-MM-DD)
+            limit: Maximum number of matches to return
+            
+        Returns:
+            list: List of match dictionaries
+        """
+        params = {}
+        if competition_code:
+            endpoint = f"competitions/{competition_code}/matches"
+        elif team_id:
+            endpoint = f"teams/{team_id}/matches"
+        else:
+            endpoint = "matches"
+            
+        if status:
+            params['status'] = status
+        if date_from:
+            params['dateFrom'] = date_from
+        if date_to:
+            params['dateTo'] = date_to
+        if limit:
+            params['limit'] = limit
+            
+        return self._make_request(endpoint, params).get('matches', [])
+    
+    def get_team(self, team_id: int) -> Dict:
+        """Get team details by ID.
+        
+        Args:
+            team_id: Team ID
+            
+        Returns:
+            dict: Team details
+        """
+        return self._make_request(f"teams/{team_id}")
+    
+    def get_standings(self, competition_code: str, season: int = None) -> List[Dict]:
+        """Get competition standings.
+        
+        Args:
+            competition_code: Competition code
+            season: Season year
+            
+        Returns:
+            list: List of standing tables
+        """
+        params = {'season': season} if season else {}
+        endpoint = f"competitions/{competition_code}/standings"
+        return self._make_request(endpoint, params).get('standings', [])
+    
+    def sync_teams_to_db(self, competition_code: str, season: int = None) -> Tuple[int, int]:
+        """Sync teams from API to database.
+        
+        Args:
+            competition_code: Competition code
+            season: Season year
+            
+        Returns:
+            tuple: (number_of_teams_added, number_of_teams_updated)
+        """
         try:
-            # Get competition ID for Turkish Super League
-            competitions_url = f"{self.base_url}/competitions"
-            response = requests.get(competitions_url, headers=self.headers, timeout=10)
+            teams_data = self.get_teams(competition_code, season)
+            added = 0
+            updated = 0
             
-            if response.status_code != 200:
-                print(f"API Error: {response.status_code}")
-                return self._get_sample_teams()
-            
-            competitions = response.json()['competitions']
-            turkish_league = None
-            
-            for comp in competitions:
-                if comp.get('code') == league_code or 'Turkey' in comp.get('area', {}).get('name', ''):
-                    turkish_league = comp
-                    break
-            
-            if not turkish_league:
-                print("Turkish Super League not found, using sample data")
-                return self._get_sample_teams()
-            
-            # Get teams from the league
-            teams_url = f"{self.base_url}/competitions/{turkish_league['id']}/teams"
-            response = requests.get(teams_url, headers=self.headers, timeout=10)
-            
-            if response.status_code == 200:
-                teams_data = response.json()['teams']
-                return self._process_api_teams(teams_data)
-            else:
-                print(f"Teams API Error: {response.status_code}")
-                return self._get_sample_teams()
+            for team_data in teams_data:
+                team = Team.query.filter_by(api_id=team_data['id']).first()
                 
-        except Exception as e:
-            print(f"API Exception: {e}")
-            return self._get_sample_teams()
-    
-    def get_league_matches(self, league_code='TR1', season=2024):
-        """Get matches from Turkish Super League"""
-        if not self.api_key:
-            print("No API key found, using sample matches")
-            return self._get_sample_matches()
-        
-        try:
-            # Similar implementation for matches
-            print("Fetching real match data...")
-            # Implementation would go here
-            return self._get_sample_matches()
+                if not team:
+                    team = Team(
+                        api_id=team_data['id'],
+                        name=team_data['name'],
+                        short_name=team_data.get('shortName', ''),
+                        tla=team_data.get('tla', ''),
+                        crest_url=team_data.get('crest', ''),
+                        venue=team_data.get('venue', ''),
+                        founded=team_data.get('founded'),
+                        country=team_data.get('area', {}).get('name', '')
+                    )
+                    db.session.add(team)
+                    added += 1
+                else:
+                    team.name = team_data['name']
+                    team.short_name = team_data.get('shortName', team.short_name or '')
+                    team.tla = team_data.get('tla', team.tla or '')
+                    team.crest_url = team_data.get('crest', team.crest_url or '')
+                    team.venue = team_data.get('venue', team.venue or '')
+                    team.founded = team_data.get('founded', team.founded)
+                    team.country = team_data.get('area', {}).get('name', team.country or '')
+                    updated += 1
             
-        except Exception as e:
-            print(f"Match API Exception: {e}")
-            return self._get_sample_matches()
-    
-    def _process_api_teams(self, teams_data):
-        """Process API team data into our format"""
-        processed_teams = []
-        
-        for team_data in teams_data:
-            team_info = {
-                'name': team_data.get('name', 'Unknown Team'),
-                'country': team_data.get('area', {}).get('name', 'Turkey'),
-                'league': 'Süper Lig',
-                'founded': team_data.get('founded'),
-                'stadium': team_data.get('venue', 'Unknown Stadium'),
-                'attack_strength': self._calculate_team_strength(team_data),
-                'defense_strength': self._calculate_defense_strength(team_data),
-                'home_advantage': self._calculate_home_advantage(team_data),
-                'current_form': 50.0  # Default, would be calculated from recent matches
-            }
-            processed_teams.append(team_info)
-        
-        return processed_teams
-    
-    def _calculate_team_strength(self, team_data):
-        """Calculate team attack strength from API data"""
-        # This would use historical performance, squad value, etc.
-        # For now, return a realistic range
-        import random
-        return random.randint(60, 90)
-    
-    def _calculate_defense_strength(self, team_data):
-        """Calculate team defense strength from API data"""
-        import random
-        return random.randint(60, 85)
-    
-    def _calculate_home_advantage(self, team_data):
-        """Calculate home advantage percentage"""
-        import random
-        return random.randint(3, 12)
-    
-    def _get_sample_teams(self):
-        """Fallback sample teams"""
-        return [
-            {"name": "Galatasaray", "country": "Turkey", "league": "Süper Lig", "founded": 1905, "stadium": "Türk Telekom Stadium", "attack_strength": 85, "defense_strength": 75, "home_advantage": 8, "current_form": 78},
-            {"name": "Fenerbahçe", "country": "Turkey", "league": "Süper Lig", "founded": 1907, "stadium": "Şükrü Saracoğlu Stadium", "attack_strength": 82, "defense_strength": 77, "home_advantage": 7, "current_form": 75},
-            {"name": "Beşiktaş", "country": "Turkey", "league": "Süper Lig", "founded": 1903, "stadium": "Vodafone Park", "attack_strength": 78, "defense_strength": 72, "home_advantage": 9, "current_form": 70},
-            {"name": "Trabzonspor", "country": "Turkey", "league": "Süper Lig", "founded": 1967, "stadium": "Medical Park Stadium", "attack_strength": 75, "defense_strength": 74, "home_advantage": 10, "current_form": 72},
-            {"name": "Başakşehir", "country": "Turkey", "league": "Süper Lig", "founded": 1990, "stadium": "Başakşehir Fatih Terim Stadium", "attack_strength": 70, "defense_strength": 75, "home_advantage": 5, "current_form": 68},
-            {"name": "Adana Demirspor", "country": "Turkey", "league": "Süper Lig", "founded": 1940, "stadium": "Adana 5 Ocak Stadium", "attack_strength": 65, "defense_strength": 63, "home_advantage": 6, "current_form": 58},
-            {"name": "Alanyaspor", "country": "Turkey", "league": "Süper Lig", "founded": 1948, "stadium": "Bahçeşehir Okulları Stadium", "attack_strength": 69, "defense_strength": 66, "home_advantage": 4, "current_form": 66},
-            {"name": "Antalyaspor", "country": "Turkey", "league": "Süper Lig", "founded": 1966, "stadium": "Antalya Stadium", "attack_strength": 68, "defense_strength": 68, "home_advantage": 4, "current_form": 62},
-            {"name": "Kayserispor", "country": "Turkey", "league": "Süper Lig", "founded": 1966, "stadium": "Kadir Has Stadium", "attack_strength": 62, "defense_strength": 65, "home_advantage": 5, "current_form": 60},
-            {"name": "Sivasspor", "country": "Turkey", "league": "Süper Lig", "founded": 1967, "stadium": "Yeni 4 Eylül Stadium", "attack_strength": 63, "defense_strength": 72, "home_advantage": 7, "current_form": 64}
-        ]
-    
-    def _get_sample_matches(self):
-        """Fallback sample matches"""
-        # Return sample match data structure
-        return []
-    
-    def update_team_data(self):
-        """Update team data from API"""
-        print("Starting team data update...")
-        
-        # Get teams from API
-        teams_data = self.get_league_teams()
-        
-        # Update database
-        updated_count = 0
-        for team_data in teams_data:
-            # Check if team exists
-            existing_team = Team.query.filter_by(name=team_data['name']).first()
-            
-            if existing_team:
-                # Update existing team
-                existing_team.attack_strength = team_data['attack_strength']
-                existing_team.defense_strength = team_data['defense_strength']
-                existing_team.home_advantage = team_data['home_advantage']
-                existing_team.current_form = team_data['current_form']
-                updated_count += 1
-            else:
-                # Create new team
-                new_team = Team(**team_data)
-                db.session.add(new_team)
-                updated_count += 1
-        
-        try:
             db.session.commit()
-            print(f"Successfully updated {updated_count} teams")
-            return True, updated_count
-        except Exception as e:
+            return added, updated
+            
+        except SQLAlchemyError as e:
             db.session.rollback()
-            print(f"Error updating teams: {e}")
-            return False, 0
-    
-    def get_api_info(self):
-        """Get API connection information"""
-        status, message = self.check_api_status()
-        
-        return {
-            'api_key_available': bool(self.api_key),
-            'api_status': 'Connected' if status else 'Disconnected',
-            'message': message,
-            'base_url': self.base_url,
-            'last_update': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        }
+            logger.error(f"Database error while syncing teams: {e}")
+            return 0, 0
+        except Exception as e:
+            logger.error(f"Error syncing teams: {e}")
+            return 0, 0
+
+
+# Singleton instance
+football_api = FootballAPI()

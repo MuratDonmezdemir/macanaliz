@@ -125,9 +125,9 @@ Bu proje MIT lisansı altında lisanslanmıştır - detaylar için `LICENSE` dos
 
 ## İletişim
 
-Proje Yöneticisi: [İsminiz] - [email@example.com](mailto:email@example.com)
+Proje Yöneticisi: [Murat Donmezdemirdmr@gmail.com]()
 
-Proje Linki: [https://github.com/kullaniciadi/macanaliz](https://github.com/kullaniciadi/macanaliz)
+Proje Linki: [https://github.com/MuratDonmezdemir/macanaliz.git](https://github.com/kullaniciadi/macanaliz)
 5. Open a Pull Request
 
 ## Acknowledgments

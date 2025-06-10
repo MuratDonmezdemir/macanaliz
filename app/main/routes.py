@@ -1,8 +1,10 @@
-from flask import render_template, redirect, url_for, flash, request, abort, current_app
+from flask import Blueprint, render_template, redirect, url_for, flash, request, abort, current_app
 from flask_login import login_required, current_user
-from ..models import Match, Team, db, User, Prediction
+from app.models import Match, Team, db, User, Prediction, League
 from datetime import datetime, timedelta
-from . import main_bp
+
+# Blueprint oluştur
+main_bp = Blueprint('main', __name__)
 from .forms import ProfileForm, ChangePasswordForm
 from .. import db
 from werkzeug.security import generate_password_hash
@@ -19,9 +21,13 @@ def index():
         Match.match_date <= end_date
     ).order_by(Match.match_date).limit(10).all()
     
+    # Popüler ligleri getir (örnek olarak ilk 8 lig)
+    popular_leagues = League.query.order_by(League.name).limit(8).all()
+    
     return render_template('main/index.html', 
                          title='Ana Sayfa',
-                         matches=matches)
+                         matches=matches,
+                         popular_leagues=popular_leagues)
 
 @main_bp.route('/dashboard')
 @login_required
@@ -37,6 +43,26 @@ def dashboard():
     
     return render_template('main/dashboard.html', 
                          title='Kontrol Paneli',
+                         matches=matches)
+
+@main_bp.route('/competition/<code>')
+def competition(code):
+    # Kodu kullanarak lig bilgilerini getir
+    league = League.query.filter_by(code=code).first_or_404()
+    
+    # Ligin takımlarını sıralı şekilde getir
+    teams = Team.query.filter_by(league_id=league.id).order_by(Team.name).all()
+    
+    # Ligin maçlarını getir (son 5 maç)
+    matches = Match.query.filter(
+        Match.league_id == league.id,
+        Match.status == 'FINISHED'
+    ).order_by(Match.match_date.desc()).limit(5).all()
+    
+    return render_template('main/competition.html',
+                         title=f'{league.name} Ligi',
+                         league=league,
+                         teams=teams,
                          matches=matches)
 
 @main_bp.route('/profile', methods=['GET', 'POST'])

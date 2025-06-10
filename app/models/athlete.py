@@ -18,6 +18,7 @@ class Athlete(BaseModel):
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # İlişkiler
+    user = db.relationship('User', back_populates='athlete', uselist=False)
     
     def __repr__(self):
         return f'<Athlete {self.first_name} {self.last_name}>'

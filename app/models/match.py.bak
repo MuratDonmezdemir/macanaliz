@@ -388,7 +388,7 @@ class Match(BaseModel):
             self.updated_at = datetime.utcnow()
     
     def get_winner_id(self) -> Optional[int]:
-        """Returns the ID of the winning team"""
+        """Kazanan takımın ID'sini döndürür"""
         if not self.is_over:
             return None
             
@@ -399,7 +399,7 @@ class Match(BaseModel):
         return None
     
     def get_loser_id(self) -> Optional[int]:
-        """Returns the ID of the losing team"""
+        """Kaybeden takımın ID'sini döndürür"""
         if not self.is_over:
             return None
             

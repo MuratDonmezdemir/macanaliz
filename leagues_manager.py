@@ -1,4 +1,5 @@
-from models import Team, Match, Player
+
+from app.models import Team, Match, Player
 from app import db
 import requests
 import os

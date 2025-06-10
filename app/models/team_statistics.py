@@ -1,8 +1,11 @@
 from datetime import datetime
-from .base import BaseModel
-from sqlalchemy import Column, Integer, Float, String, ForeignKey, DateTime, Text
+from typing import Optional, Dict, Any, TYPE_CHECKING
+
+from sqlalchemy import Column, Integer, Float, String, ForeignKey, DateTime, Text, func
 from sqlalchemy.orm import relationship, backref
-from datetime import datetime
+
+from .base import BaseModel
+from app.extensions import db
 
 class TeamStatistics(BaseModel):
     """Takım istatistikleri modeli
@@ -20,36 +23,87 @@ class TeamStatistics(BaseModel):
         recent_form (str): Son 5 maç formu (Örn: 'WWDLW')
         last_updated (datetime): Son güncelleme tarihi
     """
-    
     __tablename__ = 'team_statistics'
     
-    # Zorunlu alanlar
-    team_id = Column(Integer, ForeignKey('teams.id', ondelete='CASCADE'), nullable=False, index=True)
-    season_id = Column(Integer, ForeignKey('seasons.id', ondelete='CASCADE'), nullable=False, index=True)
+    # Tekil anahtar
+    id = db.Column(db.Integer, primary_key=True)
+    
+    # Dış anahtarlar
+    team_id = db.Column(db.Integer, db.ForeignKey('teams.id', ondelete='CASCADE'), nullable=False, index=True)
+    season_id = db.Column(db.Integer, db.ForeignKey('seasons.id', ondelete='CASCADE'), nullable=False, index=True)
     
     # Genel istatistikler
-    total_matches = Column(Integer, default=0, nullable=False, comment='Toplam oynanan maç sayısı')
-    wins = Column(Integer, default=0, nullable=False, comment='Galibiyet sayısı')
-    draws = Column(Integer, default=0, nullable=False, comment='Beraberlik sayısı')
-    losses = Column(Integer, default=0, nullable=False, comment='Mağlubiyet sayısı')
+    total_matches = db.Column(db.Integer, default=0, nullable=False, comment='Toplam oynanan maç sayısı')
+    wins = db.Column(db.Integer, default=0, nullable=False, comment='Galibiyet sayısı')
+    draws = db.Column(db.Integer, default=0, nullable=False, comment='Beraberlik sayısı')
+    losses = db.Column(db.Integer, default=0, nullable=False, comment='Mağlubiyet sayısı')
     
     # Atak istatistikleri
-    goals_scored = Column(Integer, default=0, nullable=False, comment='Atılan gol sayısı')
-    shots = Column(Integer, default=0, nullable=False, comment='Toplam şut sayısı')
-    shots_on_target = Column(Integer, default=0, nullable=False, comment='İsabetli şut sayısı')
+    goals_scored = db.Column(db.Integer, default=0, nullable=False, comment='Atılan gol sayısı')
+    shots = db.Column(db.Integer, default=0, nullable=False, comment='Toplam şut sayısı')
+    shots_on_target = db.Column(db.Integer, default=0, nullable=False, comment='İsabetli şut sayısı')
     
     # Savunma istatistikleri
-    goals_conceded = Column(Integer, default=0, nullable=False, comment='Yenilen gol sayısı')
-    clean_sheets = Column(Integer, default=0, nullable=False, comment='Kalesinde gol görmediği maç sayısı')
+    goals_conceded = db.Column(db.Integer, default=0, nullable=False, comment='Yenilen gol sayısı')
+    clean_sheets = db.Column(db.Integer, default=0, nullable=False, comment='Kalesinde gol görmediği maç sayısı')
     
     # Diğer istatistikler
-    yellow_cards = Column(Integer, default=0, nullable=False, comment='Sarı kart sayısı')
-    red_cards = Column(Integer, default=0, nullable=False, comment='Kırmızı kart sayısı')
+    yellow_cards = db.Column(db.Integer, default=0, nullable=False, comment='Sarı kart sayısı')
+    red_cards = db.Column(db.Integer, default=0, nullable=False, comment='Kırmızı kart sayısı')
     
     # Form ve güncelleme bilgileri
-    recent_form = Column(String(10), default='', nullable=False, comment='Son 5 maç formu (Örn: WWDLW)')
-    last_updated = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow,
-                         nullable=False, comment='Son güncelleme tarihi')
+    recent_form = db.Column(db.String(10), default='', nullable=False, comment='Son 5 maç formu (Örn: WWDLW)')
+    last_updated = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow,
+                            nullable=False, comment='Son güncelleme tarihi')
+    
+    # İlişkiler
+    team = db.relationship('Team', back_populates='statistics', foreign_keys=[team_id])
+    season = db.relationship('Season', back_populates='team_statistics', foreign_keys=[season_id])
+    
+    def __repr__(self):
+        return f'<TeamStatistics {self.team.name} - {self.season.name}>'
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """İstatistikleri sözlük olarak döndürür"""
+        return {
+            'id': self.id,
+            'team_id': self.team_id,
+            'team_name': self.team.name if self.team else None,
+            'season_id': self.season_id,
+            'season_name': self.season.name if self.season else None,
+            'total_matches': self.total_matches,
+            'wins': self.wins,
+            'draws': self.draws,
+            'losses': self.losses,
+            'goals_scored': self.goals_scored,
+            'goals_conceded': self.goals_conceded,
+            'goal_difference': self.goals_scored - self.goals_conceded,
+            'clean_sheets': self.clean_sheets,
+            'yellow_cards': self.yellow_cards,
+            'red_cards': self.red_cards,
+            'recent_form': self.recent_form,
+            'points': (self.wins * 3) + self.draws,
+            'last_updated': self.last_updated.isoformat() if self.last_updated else None
+        }
+    
+    def update_form(self, match_result: str) -> None:
+        """Takımın form durumunu günceller
+        
+        Args:
+            match_result (str): Maç sonucu (W=Kazanma, D=Beraberlik, L=Mağlubiyet)
+        """
+        if not self.recent_form:
+            self.recent_form = match_result
+        else:
+            # Son 5 maçı tutacak şekilde güncelle
+            self.recent_form = (self.recent_form + match_result)[-5:]
+    
+    @classmethod
+    def get_team_season_stats(cls, team_id: int, season_id: int) -> 'TeamStatistics':
+        """Belirli bir takımın sezon istatistiklerini getirir"""
+        return cls.query.filter_by(team_id=team_id, season_id=season_id).first()
+    
+    # Zorunlu alanlar zaten yukarıda tanımlanmış
     
     # İlişkiler
     # Team ve Season ilişkileri backref ile tanımlanıyor

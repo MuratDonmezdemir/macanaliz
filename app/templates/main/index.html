@@ -89,27 +89,30 @@
         <div class="col-12">
             <h2 class="mb-3">Popüler Ligler</h2>
             <div class="row">
-                {% for comp in [
-                    {'code': 'PL', 'name': 'Premier League'},
-                    {'code': 'PD', 'name': 'La Liga'},
-                    {'code': 'SA', 'name': 'Serie A'},
-                    {'code': 'BL1', 'name': 'Bundesliga'},
-                    {'code': 'FL1', 'name': 'Ligue 1'},
-                    {'code': 'PPL', 'name': 'Primeira Liga'},
-                    {'code': 'CL', 'name': 'Şampiyonlar Ligi'},
-                    {'code': 'EL', 'name': 'Avrupa Ligi'}
-                ] %}
-                    <div class="col-md-3 mb-4">
-                        <div class="card h-100">
-                            <div class="card-body text-center">
-                                <img src="{{ url_for('static', filename='img/leagues/' + comp.code|lower + '.png') }}" 
-                                     alt="{{ comp.name }}" style="height: 50px; margin-bottom: 10px;">
-                                <h5 class="card-title">{{ comp.name }}</h5>
-                                <a href="{{ url_for('main.competition', code=comp.code) }}" class="btn btn-outline-primary btn-sm">Ligi Görüntüle</a>
+                {% if popular_leagues %}
+                    {% for league in popular_leagues %}
+                        <div class="col-md-3 mb-4">
+                            <div class="card h-100">
+                                <div class="card-body text-center">
+                                    {% if league.logo %}
+                                        <img src="{{ league.logo }}" 
+                                             alt="{{ league.name }}" style="height: 50px; margin-bottom: 10px; object-fit: contain;">
+                                    {% else %}
+                                        <div style="height: 50px; display: flex; align-items: center; justify-content: center; margin-bottom: 10px;">
+                                            <i class="fas fa-trophy fa-2x" style="color: #6c757d;"></i>
+                                        </div>
+                                    {% endif %}
+                                    <h5 class="card-title">{{ league.name }}</h5>
+                                    <a href="{{ url_for('main.competition', code=league.code) }}" class="btn btn-outline-primary btn-sm">Ligi Görüntüle</a>
+                                </div>
                             </div>
                         </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="col-12 text-center">
+                        <p class="text-muted">Henüz lig bilgisi bulunmuyor.</p>
                     </div>
-                {% endfor %}
+                {% endif %}
             </div>
         </div>
     </div>

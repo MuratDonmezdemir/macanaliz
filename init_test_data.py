@@ -1,9 +1,97 @@
-from app import app, db
-from models import Team, Match, Prediction, TeamStatistics
+from app import create_app, db
+from app.models import Team, Match, Prediction, TeamStatistics, BaseModel, User
 from datetime import datetime, timedelta
 import random
 
 def create_test_data():
+    app = create_app()
+    app.app_context().push()
+    
+    # Veritabanını temizle
+    db.drop_all()
+    db.create_all()
+    
+    print("Veritabanı tabloları oluşturuldu.")
+    
+    # Test kullanıcıları oluştur
+    users = [
+        User(username='admin', email='admin@example.com', is_admin=True),
+        User(username='user1', email='user1@example.com'),
+        User(username='user2', email='user2@example.com')
+    ]
+    
+    for user in users:
+        user.set_password('password123')
+        db.session.add(user)
+    
+    # Test takımları oluştur
+    teams = [
+        Team(name='Galatasaray', short_name='GS', country='Türkiye', founded=1905),
+        Team(name='Fenerbahçe', short_name='FB', country='Türkiye', founded=1907),
+        Team(name='Beşiktaş', short_name='BJK', country='Türkiye', founded=1903),
+        Team(name='Trabzonspor', short_name='TS', country='Türkiye', founded=1967)
+    ]
+    
+    for team in teams:
+        db.session.add(team)
+    
+    db.session.commit()
+    print(f"{len(teams)} takım oluşturuldu.")
+    
+    # Test maçları oluştur
+    matches = []
+    today = datetime.utcnow()
+    
+    for i in range(10):
+        home_team = random.choice(teams)
+        away_team = random.choice([t for t in teams if t.id != home_team.id])
+        
+        match = Match(
+            home_team_id=home_team.id,
+            away_team_id=away_team.id,
+            match_date=today + timedelta(days=i),
+            status='SCHEDULED',
+            home_goals=0,
+            away_goals=0
+        )
+        matches.append(match)
+        db.session.add(match)
+    
+    db.session.commit()
+    print(f"{len(matches)} maç oluşturuldu.")
+    
+    # Test tahminleri oluştur
+    for match in matches:
+        for user in users:
+            prediction = Prediction(
+                match_id=match.id,
+                user_id=user.id,
+                home_goals=random.randint(0, 3),
+                away_goals=random.randint(0, 3),
+                home_win_prob=random.uniform(0.2, 0.8),
+                draw_prob=random.uniform(0.1, 0.3),
+                away_win_prob=random.uniform(0.1, 0.5),
+                over_2_5_prob=random.uniform(0.3, 0.7),
+                btts_prob=random.uniform(0.3, 0.7),
+                model_version='1.0',
+                confidence=random.uniform(0.6, 0.95)
+            )
+            db.session.add(prediction)
+    
+    db.session.commit()
+    print(f"Tahminler oluşturuldu.")
+    
+    print("Test verileri başarıyla oluşturuldu!")
+    away_win_prob = db.Column(db.Float, nullable=False)  # Deplasman kazanma olasılığı
+    over_2_5_prob = db.Column(db.Float, nullable=False)  # 2.5 üstü gol olasılığı
+    btts_prob = db.Column(db.Float, nullable=False)      # İki takımın da gol atma olasılığı
+    model_version = db.Column(db.String(50), nullable=False)  # Kullanılan model versiyonu
+    confidence = db.Column(db.Float)  # Modelin bu tahmindeki güveni
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # İlişkiler
+    match = db.relationship('Match', back_populates='predictions')
     with app.app_context():
         # Clear existing data
         db.drop_all()

@@ -1,4 +1,6 @@
 from datetime import datetime
+from sqlalchemy import Column, Integer, String, Text, DateTime
+
 from .base import BaseModel
 from app.extensions import db
 
@@ -19,7 +21,8 @@ class Stadium(BaseModel):
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # İlişkiler
-    # Team ve Match ilişkileri backref ile tanımlanıyor
+    matches = db.relationship('Match', back_populates='stadium', lazy='dynamic')
+    teams = db.relationship('Team', back_populates='stadium', lazy='dynamic')
     
     def __repr__(self):
         return f'<Stadium {self.name}>'

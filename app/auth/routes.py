@@ -1,10 +1,12 @@
-from flask import render_template, redirect, url_for, flash, request
+from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from app import db
 from app.models.user import User
 from app.forms import LoginForm, RegistrationForm
-from . import auth_bp
+
+# Blueprint oluştur
+auth_bp = Blueprint('auth', __name__)
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
@@ -35,9 +37,9 @@ def register():
         hashed_password = generate_password_hash(form.password.data)
         user = User(
             username=form.username.data,
-            email=form.email.data,
-            password_hash=hashed_password
+            email=form.email.data
         )
+        user.set_password(form.password.data)
         
         db.session.add(user)
         db.session.commit()
