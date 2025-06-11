@@ -1,146 +1,273 @@
-from datetime import datetime, timedelta
-from werkzeug.security import generate_password_hash
 from app import create_app, db
-from app.models.user import User
-from app.models.athlete import Athlete
-from app.models.equipment import Equipment, EquipmentType
-from app.models.location import Location
-from app.models.race import Race, RaceResult
-from app.models.weather import WeatherData
+from app.models import Team, Match, Prediction, TeamStatistics, BaseModel, User
+from datetime import datetime, timedelta
+import random
 
-def create_sample_data():
+
+def create_test_data():
     app = create_app()
+    app.app_context().push()
+
+    # Veritabanını temizle
+    db.drop_all()
+    db.create_all()
+
+    print("Veritabanı tabloları oluşturuldu.")
+
+    # Test kullanıcıları oluştur
+    users = [
+        User(username="admin", email="admin@example.com", is_admin=True),
+        User(username="user1", email="user1@example.com"),
+        User(username="user2", email="user2@example.com"),
+    ]
+
+    for user in users:
+        user.set_password("password123")
+        db.session.add(user)
+
+    # Test takımları oluştur
+    teams = [
+        Team(name="Galatasaray", short_name="GS", country="Türkiye", founded=1905),
+        Team(name="Fenerbahçe", short_name="FB", country="Türkiye", founded=1907),
+        Team(name="Beşiktaş", short_name="BJK", country="Türkiye", founded=1903),
+        Team(name="Trabzonspor", short_name="TS", country="Türkiye", founded=1967),
+    ]
+
+    for team in teams:
+        db.session.add(team)
+
+    db.session.commit()
+    print(f"{len(teams)} takım oluşturuldu.")
+
+    # Test maçları oluştur
+    matches = []
+    today = datetime.utcnow()
+
+    for i in range(10):
+        home_team = random.choice(teams)
+        away_team = random.choice([t for t in teams if t.id != home_team.id])
+
+        match = Match(
+            home_team_id=home_team.id,
+            away_team_id=away_team.id,
+            match_date=today + timedelta(days=i),
+            status="SCHEDULED",
+            home_goals=0,
+            away_goals=0,
+        )
+        matches.append(match)
+        db.session.add(match)
+
+    db.session.commit()
+    print(f"{len(matches)} maç oluşturuldu.")
+
+    # Test tahminleri oluştur
+    for match in matches:
+        for user in users:
+            prediction = Prediction(
+                match_id=match.id,
+                user_id=user.id,
+                home_goals=random.randint(0, 3),
+                away_goals=random.randint(0, 3),
+                home_win_prob=random.uniform(0.2, 0.8),
+                draw_prob=random.uniform(0.1, 0.3),
+                away_win_prob=random.uniform(0.1, 0.5),
+                over_2_5_prob=random.uniform(0.3, 0.7),
+                btts_prob=random.uniform(0.3, 0.7),
+                model_version="1.0",
+                confidence=random.uniform(0.6, 0.95),
+            )
+            db.session.add(prediction)
+
+    db.session.commit()
+    print(f"Tahminler oluşturuldu.")
+
+    print("Test verileri başarıyla oluşturuldu!")
+    away_win_prob = db.Column(db.Float, nullable=False)  # Deplasman kazanma olasılığı
+    over_2_5_prob = db.Column(db.Float, nullable=False)  # 2.5 üstü gol olasılığı
+    btts_prob = db.Column(db.Float, nullable=False)  # İki takımın da gol atma olasılığı
+    model_version = db.Column(
+        db.String(50), nullable=False
+    )  # Kullanılan model versiyonu
+    confidence = db.Column(db.Float)  # Modelin bu tahmindeki güveni
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(
+        db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
+
+    # İlişkiler
+    match = db.relationship("Match", back_populates="predictions")
     with app.app_context():
         # Clear existing data
         db.drop_all()
         db.create_all()
-        
-        # Create admin user
-        admin = User(
-            username='admin',
-            email='admin@example.com',
-            is_admin=True
-        )
-        admin.set_password('admin123')
-        
-        # Create regular user
-        user1 = User(
-            username='athlete1',
-            email='athlete1@example.com'
-        )
-        user1.set_password('password123')
-        
-        db.session.add_all([admin, user1])
-        db.session.commit()
-        
-        # Create athlete profiles
-        athlete1 = Athlete(
-            user_id=user1.id,
-            first_name='John',
-            last_name='Doe',
-            date_of_birth=datetime(1990, 5, 15),
-            weight=75.5,  # kg
-            height=180,   # cm
-            experience_level='Intermediate',
-            dominant_side='right'
-        )
-        
-        db.session.add(athlete1)
-        db.session.commit()
-        
-        # Create equipment types
-        sail_type = EquipmentType(name='Sail', description='Windsurfing sail')
-        board_type = EquipmentType(name='Board', description='Windsurfing board')
-        
-        db.session.add_all([sail_type, board_type])
-        db.session.commit()
-        
-        # Create equipment
-        sail1 = Equipment(
-            athlete_id=athlete1.id,
-            equipment_type_id=sail_type.id,
-            brand='North Sails',
-            model='E-Type',
-            size=6.2,  # m²
-            purchase_date=datetime(2023, 3, 1),
-            is_active=True
-        )
-        
-        board1 = Equipment(
-            athlete_id=athlete1.id,
-            equipment_type_id=board_type.id,
-            brand='JP Australia',
-            model='Magic Ride',
-            size=112,  # liters
-            purchase_date=datetime(2023, 3, 1),
-            is_active=True
-        )
-        
-        db.session.add_all([sail1, board1])
-        db.session.commit()
-        
-        # Create locations
-        alacati = Location(
-            name='Alaçatı',
-            latitude=38.2833,
-            longitude=26.3833,
-            country='Turkey',
-            region='İzmir',
-            is_active=True,
-            description='Famous windsurfing spot in Turkey'
-        )
-        
-        db.session.add(alacati)
-        db.session.commit()
-        
-        # Create race
-        race1 = Race(
-            name='Alaçatı Windsurf Challenge 2025',
-            location_id=alacati.id,
-            start_date=datetime(2025, 7, 15, 10, 0),
-            end_date=datetime(2025, 7, 17, 18, 0),
-            status='scheduled',
-            race_type='Slalom',
-            description='Annual windsurfing competition in Alaçatı'
-        )
-        
-        db.session.add(race1)
-        db.session.commit()
-        
-        # Create weather data
-        weather1 = WeatherData(
-            location_id=alacati.id,
-            timestamp=datetime(2025, 7, 15, 10, 0),
-            temperature=28.5,  # Celsius
-            wind_speed=8.2,    # m/s
-            wind_direction=270, # degrees (west)
-            wind_gust=10.5,    # m/s
-            wave_height=1.2,   # meters
-            wave_period=5.5,   # seconds
-            humidity=65,       # percentage
-            pressure=1015,     # hPa
-            visibility=10,     # km
-            weather_code='clear_sky',
-            source='sample_data'
-        )
-        
-        db.session.add(weather1)
-        db.session.commit()
-        
-        # Create race result
-        result1 = RaceResult(
-            race_id=race1.id,
-            athlete_id=athlete1.id,
-            equipment_id=sail1.id,
-            position=1,
-            score=100,
-            notes='Great performance with consistent speed'
-        )
-        
-        db.session.add(result1)
-        db.session.commit()
-        
-        print('Sample data created successfully!')
 
-if __name__ == '__main__':
-    create_sample_data()
+        print("Creating test data...")
+
+        # Create teams
+        teams = []
+        team_names = [
+            "Galatasaray",
+            "Fenerbahçe",
+            "Beşiktaş",
+            "Trabzonspor",
+            "Başakşehir",
+            "Adana Demirspor",
+            "Konyaspor",
+            "Alanyaspor",
+            "Sivasspor",
+            "Kayserispor",
+            "Gaziantep FK",
+            "Antalyaspor",
+            "Kasımpaşa",
+            "Hatayspor",
+            "Giresunspor",
+            "Ümraniyespor",
+            "Ankaragücü",
+            "İstanbulspor",
+            "Göztepe",
+            "Altay",
+        ]
+
+        for name in team_names:
+            team = Team(name=name, short_name=name[:3].upper())
+            teams.append(team)
+            db.session.add(team)
+
+        db.session.commit()
+        print(f"Created {len(teams)} teams")
+
+        # Create matches for the last 2 years
+        today = datetime.now()
+        start_date = today - timedelta(days=730)  # 2 years ago
+
+        matches = []
+        match_date = start_date
+        match_id = 1
+
+        # Create matches for each week
+        while match_date < today + timedelta(days=30):  # Include next month
+            # Skip if it's not a weekend (Saturday or Sunday)
+            if match_date.weekday() >= 5:  # 5=Saturday, 6=Sunday
+                # Create matches between teams
+                for i in range(0, len(teams), 2):
+                    if i + 1 < len(teams):
+                        home_team = teams[i]
+                        away_team = teams[i + 1]
+
+                        # Determine match status and scores
+                        if match_date > today:
+                            status = "Scheduled"
+                            home_goals = None
+                            away_goals = None
+                        else:
+                            status = "Finished"
+                            home_goals = random.randint(0, 4)
+                            away_goals = random.randint(0, 3)
+
+                        match = Match(
+                            home_team_id=home_team.id,
+                            away_team_id=away_team.id,
+                            match_date=match_date,
+                            competition="Süper Lig",
+                            season=f"{match_date.year}/{match_date.year+1}",
+                            home_goals=home_goals,
+                            away_goals=away_goals,
+                            home_shots=random.randint(8, 20),
+                            away_shots=random.randint(6, 18),
+                            home_shots_on_target=random.randint(2, 10),
+                            away_shots_on_target=random.randint(1, 8),
+                            home_possession=random.uniform(40, 70),
+                            away_possession=100 - random.uniform(40, 70),
+                            home_corners=random.randint(2, 10),
+                            away_corners=random.randint(1, 8),
+                            home_fouls=random.randint(8, 20),
+                            away_fouls=random.randint(8, 20),
+                            home_yellows=random.randint(0, 4),
+                            away_yellows=random.randint(0, 4),
+                            home_reds=random.randint(0, 1),
+                            away_reds=random.randint(0, 1),
+                            home_offsides=random.randint(0, 5),
+                            away_offsides=random.randint(0, 5),
+                            status=status,
+                        )
+
+                        # Add half-time scores for finished matches
+                        if status == "Finished":
+                            match.home_ht_goals = random.randint(0, min(3, home_goals))
+                            match.away_ht_goals = random.randint(0, min(2, away_goals))
+
+                        matches.append(match)
+                        db.session.add(match)
+
+                        # Add prediction for the match
+                        if match_date > today - timedelta(
+                            days=7
+                        ):  # Only predict recent and future matches
+                            prediction = Prediction(
+                                match_id=match.id,
+                                home_goals=round(random.uniform(0.5, 3.5), 1),
+                                away_goals=round(random.uniform(0.5, 2.5), 1),
+                                home_win=random.uniform(0.3, 0.7),
+                                draw=random.uniform(0.1, 0.4),
+                                away_win=random.uniform(0.1, 0.5),
+                                home_ht_goals=round(random.uniform(0.2, 2.0), 1),
+                                away_ht_goals=round(random.uniform(0.1, 1.5), 1),
+                                ht_home_win=random.uniform(0.2, 0.6),
+                                ht_draw=random.uniform(0.2, 0.5),
+                                ht_away_win=random.uniform(0.1, 0.4),
+                                most_likely_score=f"{random.randint(1,3)}-{random.randint(0,2)}",
+                                score_probability=random.uniform(0.05, 0.15),
+                                over_05=random.uniform(0.7, 0.95),
+                                over_15=random.uniform(0.4, 0.8),
+                                over_25=random.uniform(0.2, 0.6),
+                                btts_yes=random.uniform(0.3, 0.7),
+                                algorithm="random_forest",
+                                model_version="1.0",
+                                confidence=random.uniform(0.6, 0.9),
+                            )
+                            db.session.add(prediction)
+
+            # Move to next week
+            match_date += timedelta(days=7)
+
+        db.session.commit()
+        print(f"Created {len(matches)} matches")
+
+        # Create team statistics
+        for team in teams:
+            stats = TeamStatistics(
+                team_id=team.id,
+                season="2023/2024",
+                matches_played=random.randint(10, 34),
+                wins=random.randint(3, 25),
+                draws=random.randint(3, 15),
+                losses=random.randint(0, 10),
+                goals_for=random.randint(15, 70),
+                goals_against=random.randint(10, 40),
+                clean_sheets=random.randint(3, 15),
+                failed_to_score=random.randint(2, 10),
+                avg_possession=random.uniform(40, 65),
+                shots_per_game=random.uniform(8, 18),
+                shots_on_target_per_game=random.uniform(3, 8),
+                pass_accuracy=random.uniform(70, 90),
+                aerials_won=random.uniform(10, 25),
+                tackles_per_game=random.uniform(10, 25),
+                interceptions_per_game=random.uniform(8, 20),
+                fouls_per_game=random.uniform(8, 20),
+                corners_per_game=random.uniform(3, 8),
+            )
+            db.session.add(stats)
+
+        db.session.commit()
+        print("Created team statistics")
+
+        print("\nTest data created successfully!")
+        print(f"Total teams: {Team.query.count()}")
+        print(f"Total matches: {Match.query.count()}")
+        print(f"Total predictions: {Prediction.query.count()}")
+        print(f"Total team statistics: {TeamStatistics.query.count()}")
+
+
+if __name__ == "__main__":
+    create_test_data()

@@ -17,11 +17,13 @@ from sqlalchemy.exc import NoResultFound
 from werkzeug.local import LocalProxy
 
 from app import app
-from models import db, OAuth, User
+from app.extensions import db
+from app.models.user import User
+from app.models.oauth import OAuth
 
 login_manager = LoginManager(app)
-login_manager.login_view = 'football_auth.login'
-login_manager.login_message = 'Please log in to access this page.'
+login_manager.login_view = "football_auth.login"
+login_manager.login_message = "Please log in to access this page."
 
 
 @login_manager.user_loader
@@ -30,14 +32,18 @@ def load_user(user_id):
 
 
 class UserSessionStorage(BaseStorage):
-
     def get(self, blueprint):
         try:
-            token = db.session.query(OAuth).filter_by(
-                user_id=current_user.get_id(),
-                browser_session_key=g.browser_session_key,
-                provider=blueprint.name,
-            ).one().token
+            token = (
+                db.session.query(OAuth)
+                .filter_by(
+                    user_id=current_user.get_id(),
+                    browser_session_key=g.browser_session_key,
+                    provider=blueprint.name,
+                )
+                .one()
+                .token
+            )
         except NoResultFound:
             token = None
         return token
@@ -60,17 +66,18 @@ class UserSessionStorage(BaseStorage):
         db.session.query(OAuth).filter_by(
             user_id=current_user.get_id(),
             browser_session_key=g.browser_session_key,
-            provider=blueprint.name).delete()
+            provider=blueprint.name,
+        ).delete()
         db.session.commit()
 
 
 def make_football_blueprint():
     try:
-        repl_id = os.environ['REPL_ID']
+        repl_id = os.environ["REPL_ID"]
     except KeyError:
         raise SystemExit("the REPL_ID environment variable must be set")
 
-    issuer_url = os.environ.get('ISSUER_URL', "https://replit.com/oidc")
+    issuer_url = os.environ.get("ISSUER_URL", "https://replit.com/oidc")
 
     football_bp = OAuth2ConsumerBlueprint(
         "football_auth",
@@ -99,10 +106,10 @@ def make_football_blueprint():
 
     @football_bp.before_app_request
     def set_applocal_session():
-        if '_browser_session_key' not in session:
-            session['_browser_session_key'] = uuid.uuid4().hex
+        if "_browser_session_key" not in session:
+            session["_browser_session_key"] = uuid.uuid4().hex
         session.modified = True
-        g.browser_session_key = session['_browser_session_key']
+        g.browser_session_key = session["_browser_session_key"]
         g.flask_dance_football = football_bp.session
 
     @football_bp.route("/logout")
@@ -111,10 +118,12 @@ def make_football_blueprint():
         logout_user()
 
         end_session_endpoint = issuer_url + "/session/end"
-        encoded_params = urlencode({
-            "client_id": repl_id,
-            "post_logout_redirect_uri": request.url_root,
-        })
+        encoded_params = urlencode(
+            {
+                "client_id": repl_id,
+                "post_logout_redirect_uri": request.url_root,
+            }
+        )
         logout_url = f"{end_session_endpoint}?{encoded_params}"
 
         return redirect(logout_url)
@@ -128,11 +137,11 @@ def make_football_blueprint():
 
 def save_user(user_claims):
     user = User()
-    user.id = user_claims['sub']
-    user.email = user_claims.get('email')
-    user.first_name = user_claims.get('first_name')
-    user.last_name = user_claims.get('last_name')
-    user.profile_image_url = user_claims.get('profile_image_url')
+    user.id = user_claims["sub"]
+    user.email = user_claims.get("email")
+    user.first_name = user_claims.get("first_name")
+    user.last_name = user_claims.get("last_name")
+    user.profile_image_url = user_claims.get("profile_image_url")
     user.last_login = db.func.now()
     merged_user = db.session.merge(user)
     db.session.commit()
@@ -141,8 +150,7 @@ def save_user(user_claims):
 
 @oauth_authorized.connect
 def logged_in(blueprint, token):
-    user_claims = jwt.decode(token['id_token'],
-                             options={"verify_signature": False})
+    user_claims = jwt.decode(token["id_token"], options={"verify_signature": False})
     user = save_user(user_claims)
     login_user(user)
     blueprint.token = token
@@ -153,7 +161,7 @@ def logged_in(blueprint, token):
 
 @oauth_error.connect
 def handle_error(blueprint, error, error_description=None, error_uri=None):
-    return redirect(url_for('football_auth.error'))
+    return redirect(url_for("football_auth.error"))
 
 
 def require_login(f):
@@ -161,24 +169,24 @@ def require_login(f):
     def decorated_function(*args, **kwargs):
         if not current_user.is_authenticated:
             session["next_url"] = get_next_navigation_url(request)
-            return redirect(url_for('football_auth.login'))
+            return redirect(url_for("football_auth.login"))
 
-        if hasattr(football, 'token') and football.token:
+        if hasattr(football, "token") and football.token:
             try:
-                expires_in = football.token.get('expires_in', 0)
+                expires_in = football.token.get("expires_in", 0)
                 if expires_in < 0:
-                    issuer_url = os.environ.get('ISSUER_URL', "https://replit.com/oidc")
+                    issuer_url = os.environ.get("ISSUER_URL", "https://replit.com/oidc")
                     refresh_token_url = issuer_url + "/token"
                     try:
                         token = football.refresh_token(
                             token_url=refresh_token_url,
-                            client_id=os.environ.get('REPL_ID', '')
+                            client_id=os.environ.get("REPL_ID", ""),
                         )
                         if token:
                             football.token_updater(token)
                     except (InvalidGrantError, AttributeError):
                         session["next_url"] = get_next_navigation_url(request)
-                        return redirect(url_for('football_auth.login'))
+                        return redirect(url_for("football_auth.login"))
             except Exception as e:
                 print(f"Token refresh error: {e}")
                 pass  # Continue if token refresh fails
@@ -189,9 +197,10 @@ def require_login(f):
 
 
 def get_next_navigation_url(request):
-    is_navigation_url = request.headers.get(
-        'Sec-Fetch-Mode') == 'navigate' and request.headers.get(
-            'Sec-Fetch-Dest') == 'document'
+    is_navigation_url = (
+        request.headers.get("Sec-Fetch-Mode") == "navigate"
+        and request.headers.get("Sec-Fetch-Dest") == "document"
+    )
     if is_navigation_url:
         return request.url
     return request.referrer or request.url

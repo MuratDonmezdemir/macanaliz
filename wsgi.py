@@ -7,7 +7,7 @@ import os
 from app import create_app
 
 # Create application instance
-application = create_app('production')
+application = create_app("config.DevelopmentConfig")
 
 if __name__ == "__main__":
-    application.run()
+    application.run(debug=True)

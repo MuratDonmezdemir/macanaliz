@@ -1,6 +1,6 @@
 from setuptools import setup, find_packages
 
-with open('requirements.txt') as f:
+with open("requirements.txt") as f:
     requirements = f.read().splitlines()
 
 setup(
@@ -9,11 +9,11 @@ setup(
     packages=find_packages(),
     install_requires=requirements,
     include_package_data=True,
-    python_requires='>=3.8',
+    python_requires=">=3.8",
     author="Your Name",
     author_email="your.email@example.com",
     description="Football match analysis and prediction system",
-    long_description=open('README.md').read(),
+    long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
     url="https://github.com/yourusername/macanaliz",
     classifiers=[

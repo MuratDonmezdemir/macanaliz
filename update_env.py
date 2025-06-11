@@ -5,16 +5,16 @@ from pathlib import Path
 
 def update_env():
     # .env dosyasının yolunu belirle
-    env_path = Path('.') / '.env'
+    env_path = Path(".") / ".env"
 
     # .env dosyası yoksa oluştur
     if not env_path.exists():
-        with open(env_path, 'w') as f:
+        with open(env_path, "w") as f:
             pass
 
     # .env dosyasını oku
     lines = []
-    with open(env_path, 'r') as f:
+    with open(env_path, "r") as f:
         lines = f.readlines()
 
     # Yeni bir güvenli SECRET_KEY oluştur
@@ -24,7 +24,7 @@ def update_env():
     # SECRET_KEY satırını güncelle veya ekle
     key_updated = False
     for i, line in enumerate(lines):
-        if line.startswith('SECRET_KEY='):
+        if line.startswith("SECRET_KEY="):
             lines[i] = secret_key_line
             key_updated = True
             break
@@ -33,7 +33,7 @@ def update_env():
         lines.append(secret_key_line)
 
     # Değişiklikleri kaydet
-    with open(env_path, 'w') as f:
+    with open(env_path, "w") as f:
         f.writelines(lines)
 
     print(f"✅ .env dosyası güncellendi. Yeni SECRET_KEY: {new_secret_key}")
